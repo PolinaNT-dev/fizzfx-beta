@@ -3086,7 +3086,7 @@ renderParticlePanel();
 requestUIRedraw('texture variant weight commit')
 }});
 weight.append(el('span',{},'Weight'),weightInput);
-const scale=makeNumeric('Variant scale','scale',parseTextureVariantScale,1,{min:.01,max:20,step:.05});
+const scale=makeNumeric('Attachment size','scale',parseTextureVariantScale,1,{min:.01,max:20,step:.05});
 const pivotX=makeNumeric('Pivot X','pivotX',parseTextureVariantPivot,.5,{min:-2,max:3,step:.05});
 const pivotY=makeNumeric('Pivot Y','pivotY',parseTextureVariantPivot,.5,{min:-2,max:3,step:.05});
 const transforms=el('div',{className:'variantTools'});transforms.style.gridColumn='2 / 5';transforms.style.display='grid';transforms.style.gridTemplateColumns='1fr 1fr 1fr';transforms.style.gap='6px';transforms.append(scale,pivotX,pivotY);
