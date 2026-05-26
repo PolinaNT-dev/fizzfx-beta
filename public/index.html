@@ -2561,7 +2561,7 @@ range('Layer Speed',l,'speed',.25,4,.01,()=>{l.speed=clamp(finiteNumber(l.speed,
 layerTimingDropdown(l),
 el('div',{className:'timelineHint'},'Layer order, names, mute/solo, duplicate, delete, and groups are controlled in the right Layers column.')
 )}
-function cycleUI(c,l){normalizeAnimationMode();const staggerMax=Math.max(2,Math.ceil(state.duration||2)),staggerControls=state.loop?[range('Stagger (s)',l,'stagger',0,staggerMax,.005,()=>{updateStaggerVisuals();forceRedraw=true}),staggerVisualization(l)]:[];c.append(phaseModeUI(l),section('Structure',range('Particle count',l,'count',0,100,1,()=>renderControls(false)),durationRange(),...staggerControls,wide('Loop',el('input',{type:'checkbox',checked:state.loop,onchange:e=>{state.loop=e.target.checked;normalizeAnimationMode();gT=0;renderControls(false)}}))),layerPlaybackSection(l));if(!state.loop)c.append(emissionUI(l))}
+function cycleUI(c,l){normalizeAnimationMode();const staggerMax=Math.max(2,Math.ceil(state.duration||2)),staggerControls=state.loop?[range('Stagger (s)',l,'stagger',0,staggerMax,.005,()=>{updateStaggerVisuals();forceRedraw=true}),staggerVisualization(l)]:[];c.append(phaseModeUI(l),section('Structure',range('Particle count',l,'count',0,100,1,()=>renderControls(false)),durationRange(),range('Particle life (s)',l,'life',0,state.duration,.01),range('Life var (s)',l,'lifeVar',0,state.duration,.01),...staggerControls,wide('Loop',el('input',{type:'checkbox',checked:state.loop,onchange:e=>{state.loop=e.target.checked;normalizeAnimationMode();gT=0;renderControls(false)}}))),layerPlaybackSection(l));if(!state.loop)c.append(emissionUI(l))}
 function selectPlain(obj,key,opts,onchange=()=>{}){const s=el('select',{onchange:e=>{obj[key]=e.target.value;onchange(e)}});opts.forEach(o=>{const value=Array.isArray(o)?o[0]:o,label=Array.isArray(o)?o[1]:o;s.appendChild(el('option',{value},label))});s.value=obj[key];return s}
 function particleOrderSelect(l){const s=el('select',{onchange:e=>{l.particleOrder=e.target.value;forceRedraw=true}});[['newerTop','Newer particles on top'],['olderTop','Older particles on top']].forEach(([value,label])=>s.appendChild(el('option',{value},label)));s.value=l.particleOrder||'newerTop';return s}
 function randomSeed32(){return hashU32(((Date.now()>>>0)^Math.floor(Math.random()*4294967295))>>>0)}
@@ -2757,7 +2757,7 @@ rows.push(range('Line X',c,'x',-2000,2000,1,()=>forceRedraw=true),range('Line Y'
 return section('Ground Collider',...rows)
 }
 function emitterPathControls(l,opts={}){
-const showStrength=!!opts.showStrength,showLife=!!opts.showLife,showBirth=!!opts.showBirth,shapeOnly=!!opts.shapeOnly;
+const showStrength=!!opts.showStrength,showBirth=!!opts.showBirth,shapeOnly=!!opts.shapeOnly;
 if(!shapeOnly)l.pathEnabled=true;l.pathPoints=pathPointsFor(l);
 const editBtn=el('button',{className:'btn small'+(pathEdit?' act':''),onclick:()=>{pathEdit=!pathEdit;if(pathEdit){attractorEdit=false;vortexEdit=false;colliderEdit=false;gizmoDrag=null;forceDrag=null}renderControls(false)}},pathEdit?'Editing Path':'Edit Path');
 const resetBtn=el('button',{className:'btn small',onclick:()=>{rememberHistory();l.pathPoints=defaultPathPoints();invalidatePathCache(l);renderControls(false)}},'Reset path');
@@ -2784,7 +2784,6 @@ range('Scatter Velocity',l,'pathScatterVel',0,600,1,()=>forceRedraw=true),
 range('Scatter Random',l,'pathScatterRandom',0,1,.01,()=>forceRedraw=true)
 ];
 const timingRows=[
-...(showLife?[range('Particle life (s)',l,'life',0,state.duration,.01),range('Life var (s)',l,'lifeVar',0,state.duration,.01)]:[]),
 pathProgressEditor(l)
 ];
 const rows=[
@@ -2811,7 +2810,7 @@ if(l.emitter==='line')emitter.push(emitterStaticControl('Line size',l,'emitLine'
 if(l.emitter==='arc')emitter.push(range('Arc angle',l,'emitArc',0,360,.1));
 emitter.push(range('Emitter scale X',l,'emitScaleX',.01,20,.01,()=>forceRedraw=true),range('Emitter scale Y',l,'emitScaleY',.01,20,.01,()=>forceRedraw=true));
 if(l.emitter==='freeform')emitter.push(...emitterPathControls(l,{shapeOnly:true,hideFollow:true}));
-if(l.emitter==='path')emitter.push(...emitterPathControls(l,{showLife:true,showBirth:true}));
+if(l.emitter==='path')emitter.push(...emitterPathControls(l,{showBirth:true}));
 emitter.push(emitterRotationControl('Emitter rot X',l,'emitRotX'),emitterRotationControl('Emitter rot Y',l,'emitRotY'),emitterRotationControl('Emitter rot Z',l,'emitRotZ'));
 emitter.push(emitterAdvanced(l));
 c.append(section('Emitter Shape',...emitter));
@@ -2825,7 +2824,6 @@ return;
 const trajectory=[trajectorySelect(l)],signedRadius=l.trajectory==='radial'&&l.emitOnEdge&&(l.emitter==='circle'||l.emitter==='freeform');
 trajectory.push(envelopeControl('Distance',l,['radiusS','radiusP','radiusE'],signedRadius?-350:0,350,.1,()=>{},'Distance over Life'));
 trajectory.push(range('Spread (deg)',l,'spread',0,360,.1));
-trajectory.push(range('Particle life (s)',l,'life',0,state.duration,.01),range('Life var (s)',l,'lifeVar',0,state.duration,.01));
 c.append(section('Trajectory',...trajectory));
 c.append(trajectoryPathSection(l));
 c.append(section('Translate',envelopeControl('Translate X',l,TX,-350,350,.5,()=>clearTranslatePreset(l)),envelopeControl('Translate Y',l,TY,-350,350,.5,()=>clearTranslatePreset(l))));
@@ -3154,7 +3152,6 @@ textureInfoLine(resolveTextureName(l,l.shape)),
 textureTypeSelect(l,shapes),
 wide('Upload PNG',upload),
 wide('Use texture color',keepColor),
-wide('Show pivot',el('input',{type:'checkbox',checked:pivotVisible,onchange:e=>{pivotVisible=e.target.checked;setPivotToggleState();requestUIRedraw('pivot overlay visibility changed','overlay')}})),
 singleTextureTransformPanel(l)
 ));
 c.append(textureVariantsUI(l));
