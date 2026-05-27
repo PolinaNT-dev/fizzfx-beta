@@ -2430,7 +2430,7 @@ if(mid-span/2<hardMin)mid=hardMin+span/2;
 if(mid+span/2>hardMax)mid=hardMax-span/2;
 yView={min:mid-span/2,max:mid+span/2}
 }
-const toNormY=v=>clamp((v-yView.min)/Math.max(.0001,yView.max-yView.min),0,1),toValueY=n=>Math.round(clamp(yView.min+(yView.max-yView.min)*n,+min,+max)*1000)/1000;
+const toNormY=v=>(v-yView.min)/Math.max(.0001,yView.max-yView.min),toValueY=n=>Math.round(clamp(yView.min+(yView.max-yView.min)*n,+min,+max)*1000)/1000;
 const toScreen=(p,W,H)=>({x:pad+p.x*(W-pad*2),y:H-pad-toNormY(p.y)*(H-pad*2)});
 const handleToScreen=(p,W,H,dir)=>({x:pad+clamp(p.x+(dir==='out'?(p.outX||0):(p.inX||0)),0,1)*(W-pad*2),y:H-pad-toNormY(p.y+(dir==='out'?(p.outY||0):(p.inY||0)))*(H-pad*2)});
 const pts=()=>ensureCurve(obj,keys).map((p,i)=>({i,x:p.x,y:toNormY(p.y)}));
