@@ -2956,6 +2956,17 @@ arr.splice(l._gradSel.i,1);
 l._gradSel.i=clamp(l._gradSel.i-1,0,arr.length-1);
 onGradientChange(l);
 }
+function reverseGradientStops(){
+rememberHistory();
+const prev=l._gradSel||{type:'color',i:0},arr=prev.type==='alpha'?ensureAlphaStops(l):ensureColorStops(l),selected=arr[clamp(prev.i,0,arr.length-1)]||null;
+ensureColorStops(l).forEach(s=>s.x=1-s.x);
+ensureAlphaStops(l).forEach(s=>s.x=1-s.x);
+ensureColorStops(l);ensureAlphaStops(l);
+const next=selected?(prev.type==='alpha'?ensureAlphaStops(l):ensureColorStops(l)).indexOf(selected):-1;
+l._gradSel={type:prev.type,i:next>=0?next:0};
+syncGradientKeys(l);forceRedraw=true;
+renderControls(false)
+}
 function sel(){const arr=selectedStops();l._gradSel.i=clamp(l._gradSel.i,0,arr.length-1);return arr[l._gradSel.i]}
 function draw(){
 const r=preview.getBoundingClientRect?.()||{width:240,height:46};cnv.width=Math.max(160,Math.round(r.width||240));cnv.height=Math.max(34,Math.round(r.height||46));
@@ -2989,7 +3000,7 @@ controls.append(wide('Color',colorInput),wide('Hex',hexInput));
 }
 buttons.append(
 el('button',{className:'btn small bad',disabled:selectedIsEndpoint(),onclick:deleteSelectedStop},'Delete stop'),
-el('button',{className:'btn small',onclick:()=>{rememberHistory();ensureColorStops(l).forEach(s=>s.x=1-s.x);ensureAlphaStops(l).forEach(s=>s.x=1-s.x);onGradientChange(l)}},'Reverse')
+el('button',{className:'btn small',onclick:reverseGradientStops},'Reverse')
 );
 preview.oncontextmenu=e=>{e.preventDefault();rememberHistory();const rr=preview.getBoundingClientRect(),x=clamp((e.clientX-rr.left)/rr.width,0,1);addColorStopAt(x);renderControls(false)};
 alphaMarks.oncontextmenu=e=>{e.preventDefault();rememberHistory();const rr=preview.getBoundingClientRect(),x=clamp((e.clientX-rr.left)/rr.width,0,1);addAlphaStopAt(x);renderControls(false)};
