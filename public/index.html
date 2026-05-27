@@ -2394,36 +2394,12 @@ modeBtns.appendChild(el('button',{className:'btn small curveZoomBtn',title:'Open
 head.appendChild(modeBtns);wrap.appendChild(head);
 const box=el('div',{className:'curveBox'}),cnv=el('canvas');
 box.appendChild(cnv);wrap.appendChild(box);
-const curveNotice=el('div',{className:'hint',style:'margin-top:4px;min-height:12px'},zoomed?'Left-click and drag points or handles. Mouse wheel zooms the value scale; Shift+wheel pans it.':'Left-click and drag points or handles. Right-click the curve to add a point. Right-click a point to remove it.');
+const curveNotice=el('div',{className:'hint',style:'margin-top:4px;min-height:12px'},zoomed?'Drag empty space to pan. Wheel zooms toward cursor.':'Left-click and drag points or handles. Right-click the curve to add a point. Right-click a point to remove it.');
 if(showHint)wrap.appendChild(curveNotice);
 const pointPanel=el('div',{className:'row wide',style:'display:none;margin-top:8px'}),pointName=el('label',{style:'cursor:ew-resize'},'Point'),pointInput=el('input',{className:'val',type:'number',min,max,step});
 pointPanel.append(pointName,pointInput);wrap.appendChild(pointPanel);
 const pad=10,hit=10;
-function curveViewValues(arr){
-const vals=[];
-arr.forEach((p,i)=>{
-vals.push(Number(p.y)||0);
-if(i<arr.length-1&&curveSegmentMode(arr[i])==='bezier')vals.push((Number(p.y)||0)+(Number(p.outY)||0));
-if(i>0&&curveSegmentMode(arr[i-1])==='bezier')vals.push((Number(p.y)||0)+(Number(p.inY)||0))
-});
-return vals.filter(Number.isFinite)
-}
-function fitCurveYView(){
-const hardMin=+min,hardMax=+max,full=Math.max(.0001,hardMax-hardMin),vals=curveViewValues(ensureCurve(obj,keys));
-let lo=vals.length?Math.min(...vals):hardMin,hi=vals.length?Math.max(...vals):hardMax;
-lo=clamp(lo,hardMin,hardMax);hi=clamp(hi,hardMin,hardMax);
-const stepSize=Math.abs(Number(step)||1),minSpan=Math.min(full,Math.max(stepSize*8,full*.015,.001));
-if(hi-lo<minSpan){const mid=(lo+hi)/2;lo=mid-minSpan/2;hi=mid+minSpan/2}
-const padY=Math.max((hi-lo)*.18,Math.min(full*.05,stepSize*2));
-lo-=padY;hi+=padY;
-if(lo<hardMin){hi+=hardMin-lo;lo=hardMin}
-if(hi>hardMax){lo-=hi-hardMax;hi=hardMax}
-if(hi-lo<minSpan){const mid=clamp((lo+hi)/2,hardMin,hardMax);lo=mid-minSpan/2;hi=mid+minSpan/2}
-lo=clamp(lo,hardMin,hardMax);hi=clamp(hi,hardMin,hardMax);
-if(hi<=lo){lo=hardMin;hi=hardMax}
-return{min:lo,max:hi}
-}
-let yView=zoomed?fitCurveYView():{min:+min,max:+max};
+let yView={min:+min,max:+max};
 function clampYView(){
 const hardMin=+min,hardMax=+max,full=Math.max(.0001,hardMax-hardMin),minSpan=Math.min(full,Math.max(Math.abs(Number(step)||1)*4,full*.005,.001));
 let span=clamp(yView.max-yView.min,minSpan,full),mid=(yView.min+yView.max)/2;
@@ -2461,7 +2437,7 @@ p.forEach((pt,i)=>{const isEnd=i===0||i===p.length-1,sel=obj._curveSel?.id===id&
 if(zoomed){x.fillStyle='rgba(159,220,255,.7)';x.font='10px '+getComputedStyle(document.documentElement).getPropertyValue('--m');x.textAlign='left';x.textBaseline='top';x.fillText(r2(yView.max),pad+4,pad+4);x.textBaseline='bottom';x.fillText(r2(yView.min),pad+4,H-pad-4)}
 const seg=obj._curveSel?.segment>=0?obj._curveSel.segment:Math.max(0,Math.min(arr.length-2,obj._curveSel?.point??0)),mode=curveSegmentMode(arr[seg]||arr[0]);
 [...modeBtns.children].forEach(b=>b.classList.toggle('act',b.dataset.mode===mode));
-curveNotice.textContent='Selected segment: '+(mode==='linear'?'Linear':'Bezier')+'. Left-click and drag to edit. '+(zoomed?'Wheel: vertical zoom. Shift+wheel: pan.':'Right-click the curve to add a point.');
+curveNotice.textContent='Selected segment: '+(mode==='linear'?'Linear':'Bezier')+'. '+(zoomed?'Drag empty space to pan. Wheel zooms toward cursor.':'Left-click and drag to edit. Right-click the curve to add a point.');
 updatePointPanel();
 }
 function pointerPoint(e){
@@ -2503,20 +2479,14 @@ syncCurveKeys(obj,keys);draw();return true;
 }
 let drag=null;
 const DRAG_THRESHOLD=5;
-cnv.addEventListener('pointerdown',e=>{if(e.button===2)return;const p=pointerPoint(e),best=nearest(p.mx,p.my,p.W,p.H);if(!best){drag=null;historyDraft=null;return}selectCurveTarget(best);drag={target:best,startX:e.clientX,startY:e.clientY,active:false};cnv.setPointerCapture?.(e.pointerId);e.preventDefault()});
-cnv.addEventListener('pointermove',e=>{if(!drag)return;if(!drag.active){const dx=e.clientX-drag.startX,dy=e.clientY-drag.startY;if(Math.hypot(dx,dy)<DRAG_THRESHOLD)return;beginHistory();drag.active=true}setFromEvent(e,drag.target);onManual()});
-cnv.addEventListener('pointerup',e=>{if(drag?.active)commitHistory();else historyDraft=null;drag=null;cnv.releasePointerCapture?.(e.pointerId)});
+cnv.addEventListener('pointerdown',e=>{if(e.button===2)return;const p=pointerPoint(e),best=nearest(p.mx,p.my,p.W,p.H);if(!best){drag=zoomed?{pan:true,startY:e.clientY,min:yView.min,max:yView.max,H:p.H,active:false}:null;historyDraft=null;if(drag){cnv.setPointerCapture?.(e.pointerId);e.preventDefault()}return}selectCurveTarget(best);drag={target:best,startX:e.clientX,startY:e.clientY,active:false};cnv.setPointerCapture?.(e.pointerId);e.preventDefault()});
+cnv.addEventListener('pointermove',e=>{if(!drag)return;if(drag.pan){const dy=e.clientY-drag.startY,inner=Math.max(1,(drag.H||cnv.height)-pad*2),span=drag.max-drag.min;yView.min=drag.min+dy*span/inner;yView.max=drag.max+dy*span/inner;clampYView();drag.active=true;draw();return}if(!drag.active){const dx=e.clientX-drag.startX,dy=e.clientY-drag.startY;if(Math.hypot(dx,dy)<DRAG_THRESHOLD)return;beginHistory();drag.active=true}setFromEvent(e,drag.target);onManual()});
+cnv.addEventListener('pointerup',e=>{if(drag?.pan)historyDraft=null;else if(drag?.active)commitHistory();else historyDraft=null;drag=null;cnv.releasePointerCapture?.(e.pointerId)});
 cnv.addEventListener('contextmenu',e=>{e.preventDefault();beginHistory();const p=pointerPoint(e),arr=ensureCurve(obj,keys),hitPt=nearest(p.mx,p.my,p.W,p.H);if(hitPt&&hitPt.type==='point'&&hitPt.i>0&&hitPt.i<arr.length-1){arr.splice(hitPt.i,1);obj._curveSel={id,point:-1,segment:-1}}else if(!hitPt){arr.push({x:p.nx,y:toValueY(p.ny),mode:'bezier'});arr.sort((a,b)=>a.x-b.x);hydrateTangents(arr);obj._curveSel={id,point:arr.findIndex(pt=>Math.abs(pt.x-p.nx)<.001&&Math.abs(pt.y-toValueY(p.ny))<.001),segment:-1}}else historyDraft=null;syncCurveKeys(obj,keys);onManual();draw();commitHistory()});
 if(zoomed)cnv.addEventListener('wheel',e=>{
 e.preventDefault();
-const span=yView.max-yView.min;
-if(e.shiftKey){
-const dy=e.deltaY*span/300;
-yView.min+=dy;yView.max+=dy
-}else{
-const p=pointerPoint(e),anchor=toValueY(p.ny),ratio=clamp((anchor-yView.min)/Math.max(.0001,span),0,1),factor=clamp(Math.exp(e.deltaY*.0018),.72,1.38),nextSpan=span*factor;
-yView.min=anchor-ratio*nextSpan;yView.max=anchor+(1-ratio)*nextSpan
-}
+const span=yView.max-yView.min,p=pointerPoint(e),anchor=toValueY(p.ny),ratio=clamp((anchor-yView.min)/Math.max(.0001,span),0,1),factor=clamp(Math.exp(e.deltaY*.0018),.72,1.38),nextSpan=span*factor;
+yView.min=anchor-ratio*nextSpan;yView.max=anchor+(1-ratio)*nextSpan;
 clampYView();draw()
 },{passive:false});
 requestAnimationFrame(draw);
