@@ -2890,7 +2890,7 @@ return wrap
 }
 function gradientEditor(l){
 ensureColorStops(l);ensureAlphaStops(l);if(!l._gradSel)l._gradSel={type:'color',i:0};
-const wrap=el('div',{className:'gradientEditor'}),preview=el('div',{className:'gradientPreview'}),cnv=el('canvas'),alphaMarks=el('div',{className:'gradMarks'}),colorMarks=el('div',{className:'gradMarks'}),controls=el('div',{className:'stopPanel'}),buttons=el('div',{className:'gradButtons'}),hint=el('div',{className:'gradientHint'},'Right-click gradient to add a color stop. Right-click alpha bar to add alpha. Double-click a stop to delete.');
+const wrap=el('div',{className:'gradientEditor'}),preview=el('div',{className:'gradientPreview'}),cnv=el('canvas'),alphaMarks=el('div',{className:'gradMarks'}),colorMarks=el('div',{className:'gradMarks'}),controls=el('div',{className:'stopPanel'}),buttons=el('div',{className:'gradButtons'}),hint=el('div',{className:'gradientHint'},'Right-click gradient to add a color stop. Right-click alpha bar to add alpha. Right-click or double-click a stop to delete.');
 preview.appendChild(cnv);wrap.append(alphaMarks,preview,colorMarks,hint,controls,buttons);
 function addColorStopAt(x){
 const stops=ensureColorStops(l),stop={x:clamp(x,0,1),color:colorToHex(colorRgbAt(l,x))};
@@ -2923,9 +2923,10 @@ let lastClick=0;
 const m=el('button',{className:'gradMarker '+(type==='alpha'?'alpha ':'')+(l._gradSel.type===type&&l._gradSel.i===i?'on':''),title:type==='alpha'?'Alpha stop (dblclick=delete)':'Color stop (dblclick=delete)',onclick:e=>{e.preventDefault();if(moved){moved=false;return}const now=Date.now();if(now-lastClick<350&&i!==0&&i!==(type==='alpha'?ensureAlphaStops(l).length:ensureColorStops(l).length)-1){rememberHistory();const arr=type==='alpha'?ensureAlphaStops(l):ensureColorStops(l);arr.splice(i,1);l._gradSel={type,i:0};onGradientChange(l);return}lastClick=now;l._gradSel={type,i};renderControls(false)}});
 m.style.left=(stop.x*100)+'%';if(type==='color')m.style.background=stop.color;
 let drag=false;
-m.addEventListener('pointerdown',e=>{beginHistory();drag=true;moved=false;l._gradSel={type,i};m.setPointerCapture?.(e.pointerId);e.preventDefault()});
+m.addEventListener('pointerdown',e=>{if(e.button===2){e.preventDefault();return}beginHistory();drag=true;moved=false;l._gradSel={type,i};m.setPointerCapture?.(e.pointerId);e.preventDefault()});
 m.addEventListener('pointermove',e=>{if(!drag)return;const rr=preview.getBoundingClientRect(),arr=type==='alpha'?ensureAlphaStops(l):ensureColorStops(l),lo=i>0?arr[i-1].x+.01:0,hi=i<arr.length-1?arr[i+1].x-.01:1;if(i!==0&&i!==arr.length-1){arr[i].x=clamp((e.clientX-rr.left)/rr.width,lo,hi);moved=true;onGradientChange(l,{redraw:false});m.style.left=(arr[i].x*100)+'%';draw()}});
 m.addEventListener('pointerup',e=>{drag=false;commitHistory();m.releasePointerCapture?.(e.pointerId);renderControls(false)});
+m.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();const arr=type==='alpha'?ensureAlphaStops(l):ensureColorStops(l);if(i===0||i===arr.length-1){l._gradSel={type,i};renderControls(false);return}rememberHistory();arr.splice(i,1);l._gradSel={type,i:clamp(i-1,0,arr.length-1)};onGradientChange(l);renderControls(false)});
 return m;
 }
 ensureAlphaStops(l).forEach((s,i)=>alphaMarks.appendChild(marker('alpha',s,i)));
