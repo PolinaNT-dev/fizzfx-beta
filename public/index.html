@@ -2514,6 +2514,8 @@ function translateBlank(l){return[...TX,...TY].every(k=>Math.abs(Number(l[k]||0)
 function trajectoryTranslateValues(l){const type=l.trajectory,a=(l.baseAngle||0)*Math.PI/180,d=type==='line'||type==='up'||type==='down'?[0,65,130]:null;if(!d)return null;return{x:d.map(v=>r2(Math.cos(a)*v)),y:d.map(v=>r2(Math.sin(a)*v))}}
 function applyTrajectoryTranslatePreset(l,force=false){const vals=trajectoryTranslateValues(l);if(!vals){if(l._translatePreset){setCurveValues(l,TX,[0,0,0]);setCurveValues(l,TY,[0,0,0]);l._translatePreset=''}return}if(!force&&!translateBlank(l)&&!l._translatePreset)return;setCurveValues(l,TX,vals.x);setCurveValues(l,TY,vals.y);l._translatePreset=l.trajectory}
 function clearTranslatePreset(l){l._translatePreset=''}
+function translateMatchesTrajectoryPreset(l){const vals=trajectoryTranslateValues(l);if(!vals)return false;return TX.every((k,i)=>Math.abs(Number(l[k]||0)-vals.x[i])<.001)&&TY.every((k,i)=>Math.abs(Number(l[k]||0)-vals.y[i])<.001)}
+function clearAutoTranslatePreset(l){if(!l?._translatePreset&&!translateMatchesTrajectoryPreset(l))return;setCurveValues(l,TX,[0,0,0]);setCurveValues(l,TY,[0,0,0]);l._translatePreset=''}
 function rememberTrajectoryPrefs(l,type=l.trajectory){if(!type)return;l._trajectoryPrefs=l._trajectoryPrefs||{};l._trajectoryPrefs[type]={spread:Number(l.spread||0),baseAngle:Number(l.baseAngle||0)}}
 function restoreTrajectoryPrefs(l,type,prev=''){const p=l._trajectoryPrefs?.[type];if(p){l.spread=Number(p.spread||0);l.baseAngle=Number(p.baseAngle||0);return}if(type==='radial'){l.spread=360;if(prev==='line')l.baseAngle=0}else if(type==='line'){l.baseAngle=270;l.spread=0}}
 function setTrajectoryMode(l,type){if(['up','down','fountain','spiral'].includes(type))type='line';if(!['radial','line'].includes(type))type='radial';const prev=l.trajectory;if(prev===type)return;rememberTrajectoryPrefs(l,prev);l.trajectory=type;restoreTrajectoryPrefs(l,type,prev);if(type==='line')l.spread=0;applyTrajectoryTranslatePreset(l)}
@@ -2838,7 +2840,7 @@ c.append(colliderSection());
 return;
 }
 const trajectory=[trajectorySelect(l)],signedRadius=l.trajectory==='radial'&&l.emitOnEdge&&(l.emitter==='circle'||l.emitter==='freeform');
-trajectory.push(envelopeControl('Distance',l,['radiusS','radiusP','radiusE'],signedRadius?-350:0,350,.1,()=>{},'Distance over Life'));
+trajectory.push(envelopeControl('Distance',l,['radiusS','radiusP','radiusE'],signedRadius?-350:0,350,.1,()=>clearAutoTranslatePreset(l),'Distance over Life'));
 trajectory.push(range('Spread (deg)',l,'spread',0,360,.1));
 c.append(section('Trajectory',...trajectory));
 c.append(trajectoryPathSection(l));
