@@ -2536,7 +2536,7 @@ function detailKey(parts){return parts.filter(v=>v!==undefined&&v!==null).join('
 function managedDetails(key,className,summaryText,defaultOpen=false){const d=el('details',{className,open:detailsOpen[key]??defaultOpen});d.dataset.key=key;d.appendChild(el('summary',{},summaryText));d.addEventListener('toggle',()=>{detailsOpen[key]=d.open});return d}
 function keepTextureVariantsOpen(){detailsOpen[detailKey(['section','particle',active,'Texture Variants'])]=true}
 function renderControls(full=true){requestUIRedraw('controls rebuild');animatedValueBindings=[];state.layers.forEach(clampLayerLife);if(full)renderLayers();tab=normalizeTabName(tab);const c=q('controls'),scroll=c.scrollTop||0,l=state.layers[active];c.innerHTML='';sectionPanel='main';sectionRenderIndex=0;if(tab==='Cycle')cycleUI(c,l);if(tab==='Motion')motionUI(c,l);if(tab==='Color')particleAnimUI(c,l);if(tab==='Presets')presetsUI(c,l);if(tab==='Export')exportUI(c,l);c.scrollTop=scroll;sectionPanel='particle';renderParticlePanel();sectionPanel='main';updateAnimatedValueBindings()}
-function durationRange(){const d=range('Duration (s)',state,'duration',.1,8,.01),inp=d.children[1],num=d.children[2],sync=(prev=state.duration)=>{state.duration=clamp(Number(state.duration)||.1,.1,8);let lifeChanged=false;state.layers.forEach(l=>{const beforeLife=l.life,beforeVar=l.lifeVar;if(!l.timingEnabled)l.startTime=0;if(!l.hardTrim){l.endTime=state.duration;l.timeOffset=0}clampLayerLife(l);if(l.life!==beforeLife||l.lifeVar!==beforeVar)lifeChanged=true});gT=Math.min(gT,previewDuration());inp.value=state.duration;num.value=String(state.duration);sliderFill(inp);updateStaggerVisuals();if(lifeChanged&&state.duration<prev)requestAnimationFrame(()=>renderControls(false))};inp.oninput=e=>{const prev=state.duration;state.duration=parseFloat(e.target.value);sync(prev)};num.oninput=e=>{const v=parseFloat(e.target.value);if(Number.isFinite(v)){const prev=state.duration;state.duration=v;sync(prev)}};return d}
+function durationRange(){const d=range('Duration (s)',state,'duration',.1,8,.01),inp=d.children[1],num=d.children[2],sync=(prev=state.duration)=>{state.duration=clamp(Number(state.duration)||.1,.1,8);let lifeChanged=false;state.layers.forEach(l=>{const beforeLife=l.life,beforeVar=l.lifeVar;if(!l.timingEnabled)l.startTime=0;if(!l.hardTrim){l.endTime=state.duration;l.timeOffset=0}clampLayerLife(l);if(l.life!==beforeLife||l.lifeVar!==beforeVar)lifeChanged=true});gT=Math.min(gT,previewDuration());inp.value=state.duration;num.value=String(state.duration);sliderFill(inp);updateStaggerVisuals();if((lifeChanged&&state.duration<prev)||state.duration>prev)requestAnimationFrame(()=>renderControls(false))};inp.oninput=e=>{const prev=state.duration;state.duration=parseFloat(e.target.value);sync(prev)};num.oninput=e=>{const v=parseFloat(e.target.value);if(Number.isFinite(v)){const prev=state.duration;state.duration=v;sync(prev)}};return d}
 function drawStaggerTrack(track,l){
 if(!track||!l)return;track.innerHTML='';
 const cycle=Math.max(.001,layerCycle(l,state.duration)),count=Math.min(Math.max(0,Math.round(l.count||0)),100),st=Math.max(0,Number(l.stagger||0)),preview=Math.min(count,80),seen=new Map();
@@ -4832,10 +4832,23 @@ else if(l.shape==='diamond'){x.beginPath();x.moveTo(0,-s*.45);x.lineTo(s*.45,0);
 else{const rays=l.rays||4,sharp=l.sharp||.4;for(let i=0;i<rays*2;i++){const a=i*Math.PI/rays-Math.PI/2,r=i%2?s*.42*sharp:s*.42;i?x.lineTo(Math.cos(a)*r,Math.sin(a)*r):x.moveTo(Math.cos(a)*r,Math.sin(a)*r)}x.closePath();x.fill()}
 return c.toDataURL('image/png');
 }
+function tintableTextureDataUrlForAttachment(att){
+if(!att?.img)return att?.src||'';
+const w=Math.max(1,Number(att.w||att.img?.naturalWidth||att.img?.width||TEX_SIZE)||TEX_SIZE),h=Math.max(1,Number(att.h||att.img?.naturalHeight||att.img?.height||TEX_SIZE)||TEX_SIZE);
+const c=document.createElement('canvas'),x=c.getContext('2d');c.width=w;c.height=h;x.clearRect(0,0,w,h);x.drawImage(att.img,0,0,w,h);
+const img=x.getImageData(0,0,w,h),d=img.data;
+for(let i=0;i<d.length;i+=4){d[i]=255;d[i+1]=255;d[i+2]=255}
+x.putImageData(img,0,0);
+return c.toDataURL('image/png')
+}
+function textureExportSrc(l,att,fallbackSrc){
+if(!att)return fallbackSrc;
+return l.useTextureColor?att.src:tintableTextureDataUrlForAttachment(att)
+}
 function textureForLayer(l){
 syncLayerExportNames(l);
 const attName=singleTextureExportName(l),att=findAttachment(l.shape)||findAttachment(attName);
-return{name:safeFileName(attName)+'.png',src:att?att.src:shapeTextureDataUrl(l)};
+return{name:safeFileName(attName)+'.png',src:att?textureExportSrc(l,att,''):shapeTextureDataUrl(l)};
 }
 function textureFilesForLayer(l){
 const variants=activeTextureVariants(l);
@@ -4845,7 +4858,7 @@ variants.forEach(v=>{
 const texName=resolveTextureName(l,v.texture),att=findAttachment(texName);
 const name=safeFileName(variantAttachmentNameForExport(l,v))+'.png';
 if(seen.has(name))return;
-seen.add(name);out.push({name,src:att?att.src:shapeTextureDataUrl(Object.assign({},l,{shape:texName,attachment:texName}))});
+seen.add(name);out.push({name,src:att?textureExportSrc(l,att,''):shapeTextureDataUrl(Object.assign({},l,{shape:texName,attachment:texName}))});
 });
 return out.length?out:[textureForLayer(l)]
 }
