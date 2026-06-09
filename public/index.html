@@ -256,6 +256,9 @@ input.val{width:54px;padding:4px 5px;color:#cbd5e1;text-align:right}
 .playPauseBtn{width:44px;height:36px;padding:0;display:flex;align-items:center;justify-content:center}
 .playPauseBtn svg{width:16px;height:16px;display:block}
 .viewerPlayback .timePill{min-width:66px;padding:8px 10px}
+.editModePill{display:none;align-items:center;max-width:150px;padding:8px 10px;border:1px solid rgba(56,189,248,.28);border-radius:var(--r4);background:rgba(56,189,248,.1);color:#7dd3fc;font-family:var(--m);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.editModePill.on{display:inline-flex}
+.editModePill.warn{border-color:rgba(244,114,182,.32);background:rgba(244,114,182,.1);color:#f9a8d4}
 
 
 .gizmoGroup{position:absolute;right:9px;top:10px;z-index:4;display:flex;flex-direction:column;gap:6px;padding:5px;border:1px solid rgba(255,255,255,.06);border-radius:var(--r6);background:rgba(11,16,24,.78);backdrop-filter:blur(6px)}
@@ -479,6 +482,7 @@ details.advanced[open] summary::after{content:'\2212'}
         <button class="btn act playPauseBtn" id="playBtn" title="Pause"></button>
         <button class="btn small iconBtn" id="restartBtn" title="Restart"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 5.2A5.4 5.4 0 1 1 4 10"/><path d="M5.2 2.8v2.4H2.8"/></svg></button>
         <span id="timeLabel" class="val timePill">0.00s</span>
+        <span id="editModePill" class="editModePill" aria-live="polite"></span>
       </div>
       <canvas id="cv"></canvas>
       <div class="gizmoGroup" aria-label="Viewer tools">
@@ -535,7 +539,7 @@ details.advanced[open] summary::after{content:'\2212'}
   </div>
 </div>
 
-<script>const FPS=30,ONE_FRAME=1/FPS,MAX_LAYERS=20,MAX_SCATTER_ANGLE=Math.PI*.35,LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ',PROJECT_APP='FizzFX',PROJECT_VERSION=1,CUSTOM_PRESETS_KEY='fizzfxCustomPresets_v1',OLD_CUSTOM_PRESETS_KEY='spineParticlePresets',BUILTIN_OVERRIDE_KEY='spineParticleBuiltinOverrides_v2',PRESET_IDB_DB='FizzFXStorage',PRESET_IDB_STORE='kv';
+<script>const FPS=30,ONE_FRAME=1/FPS,PNG_SEQUENCE_FPS=30,MAX_LAYERS=20,MAX_SCATTER_ANGLE=Math.PI*.35,LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ',PROJECT_APP='FizzFX',PROJECT_VERSION=1,CUSTOM_PRESETS_KEY='fizzfxCustomPresets_v1',OLD_CUSTOM_PRESETS_KEY='spineParticlePresets',BUILTIN_OVERRIDE_KEY='spineParticleBuiltinOverrides_v2',PRESET_IDB_DB='FizzFXStorage',PRESET_IDB_STORE='kv';
 const ANIMATION_MODES=['single','introLoopOutro'],PHASES=['intro','loop','outro'],PREVIEW_PHASES=['intro','loop','outro','full'],PHASE_FADE_MODES=['none','alpha','scale','both'];
 const ENABLE_PERF_DIAGNOSTICS=false;
 const FEATURES={
@@ -601,7 +605,7 @@ const uiState={};
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),tl=document.getElementById('tl'),tlx=tl.getContext('2d');
 let playing=true,gT=0,last=performance.now(),fpsBuf=[],tab='Cycle',active=0,downloadUrl=null;
 let timelineScrub=false;
-let gizmoMode='move',gizmoVisible=true,gizmoDrag=null,gizmoHover=null,gizmoTip='',forceDrag=null,attractorEdit=false,vortexEdit=false,pathEdit=false,pathDrag=null,colliderEdit=false,colliderDrag=null,pivotVisible=true,showGrid=true,showMotionPaths=false,bgLocked=false,fgLocked=false;
+let gizmoMode='move',gizmoVisible=true,gizmoDrag=null,gizmoHover=null,gizmoTip='',forceDrag=null,attractorEdit=false,vortexEdit=false,pathEdit=false,pathDrag=null,colliderEdit=false,colliderDrag=null,pivotVisible=true,showGrid=true,showMotionPaths=false,bgLocked=false,fgLocked=false,pngSequenceExporting=false;
 let layerStackSelection={type:'layer',groupId:''};
 let layerRenameClickTimer=null;
 const cssCache={bg2:'#0b1018',line:'#1b2636',dim:'#384d63',a:'#38bdf8',mut:'#718499'};
@@ -659,7 +663,7 @@ state.activePreviewPhase='full'
 }
 }
 const PRESET_SCHEMA_VERSION=1;
-function baseLayer(i=0,duration=1.2){return{letter:LETTERS[i],name:'Layer '+(i+1),enabled:true,groupId:'',muted:false,solo:false,timingEnabled:false,hardTrim:false,startTime:0,endTime:duration,timeOffset:0,introEnabled:true,loopEnabled:true,outroEnabled:true,introFadeMode:'both',outroFadeMode:'both',count:24,stagger:.05,particleOrder:'newerTop',seed:(0x9e3779b9*(i+1))>>>0,emissionMode:'sequential',emissionStart:0,emissionDuration:duration,emissionS:1,emissionP:1,emissionE:.2,fadeIn:.08,fadeOut:.35,life:duration,lifeVar:0,turbulenceEnabled:false,turbulenceStrength:0,turbulenceScale:80,turbulenceSpeed:1,turbulenceSeed:(0x85ebca6b*(i+1))>>>0,turbulenceCurve:[{x:0,y:1,mode:'bezier'},{x:1,y:1,mode:'bezier'}],vortexEnabled:false,vortexX:0,vortexY:0,vortexRadius:120,vortexStrength:0,vortexFalloff:1,vortexDirection:'ccw',vortexStart:0,vortexEnd:1,emitterX:0,emitterY:0,lockSpawnToBirth:true,emitter:'point',emitRadius:100,emitOnEdge:false,emitW:120,emitH:70,emitLine:100,emitArc:180,emitScaleX:1,emitScaleY:1,emitRotX:0,emitRotY:0,emitRotZ:0,trajectory:'radial',radiusS:0,radiusP:90,radiusE:115,travelXS:0,travelXP:0,travelXE:0,travelYS:0,travelYP:0,travelYE:0,attractor:false,attractMode:'pull',attractRadius:160,attractX:0,attractY:0,attractStart:.55,attractStrength:1,attractS:0,attractP:.3,attractE:1,pathEnabled:false,pathStrength:.5,pathWidth:0,pathWidthCurveEnabled:false,pathWidthCurve:[{x:0,y:0,mode:'bezier'},{x:1,y:0,mode:'bezier'}],pathNoise:0,pathNoiseScale:3,pathScatterVel:0,pathScatterRandom:.5,pathSpawnEvenness:1,pathBirthAlong:false,pathBirthSpread:.15,pathBirthRandom:0,pathProgressCurve:[{x:0,y:0,mode:'bezier'},{x:1,y:1,mode:'bezier'}],pathFollow:false,rotateFromNormal:false,pathClosed:false,pathPoints:[{x:0,y:0,outX:55,outY:-75},{x:120,y:-120,inX:-55,inY:75}],spread:360,baseAngle:0,gravity:0,windS:0,windP:0,windE:0,turbS:10,turbP:18,turbE:8,ease:'easeout',scaleS:.7,scaleP:1.1,scaleE:.4,splitScale:false,scaleX:1,scaleY:1,colorS:'#ffffff',colorP:'#ffffff',colorE:'#ffffff',alphaS:0,alphaM:1,alphaE:0,alphaVar:0,opacityFlickerEnabled:false,opacityFlickerAmount:0,opacityFlickerFrequency:8,opacityFlickerSeed:(0x165667b1*(i+1))>>>0,colorNoiseEnabled:false,colorNoiseAmount:0,colorNoiseScale:2,colorNoiseSpeed:0,colorNoiseSeed:(0x27d4eb2d*(i+1))>>>0,colorNoiseA:'#ffffff',colorNoiseB:'#38bdf8',shape:'star',rays:4,sharp:.4,spriteSize:34,useTextureColor:false,textureVariantsEnabled:false,textureVariants:[{texture:'soft',weight:1},{texture:'smoke_puff',weight:1}],rotStart:0,rotSpeed:0,rotVar:0,rotCurveS:0,rotCurveP:0,rotCurveE:0,scaleVar:0,colorMode:'gradient',colorRand:['#ff4444','#44ff88','#4488ff'],pivotX:.5,pivotY:.5,posVar:0,attachment:'particle',blend:'normal',speed:1,prefix:LETTERS[i].toLowerCase()+'_',root:'root',seeds:[],curves:{}}}
+function baseLayer(i=0,duration=1.2){return{letter:LETTERS[i],name:'Layer '+(i+1),enabled:true,groupId:'',muted:false,solo:false,timingEnabled:false,hardTrim:false,startTime:0,endTime:duration,timeOffset:0,introEnabled:true,loopEnabled:true,outroEnabled:true,introFadeMode:'both',outroFadeMode:'both',count:24,stagger:.05,particleOrder:'newerTop',seed:(0x9e3779b9*(i+1))>>>0,emissionMode:'sequential',emissionStart:0,emissionDuration:duration,emissionS:1,emissionP:1,emissionE:.2,fadeIn:.08,fadeOut:.35,life:duration,lifeVar:0,turbulenceEnabled:false,turbulenceStrength:0,turbulenceScale:80,turbulenceSpeed:1,turbulenceSeed:(0x85ebca6b*(i+1))>>>0,turbulenceCurve:[{x:0,y:1,mode:'bezier'},{x:1,y:1,mode:'bezier'}],vortexEnabled:false,vortexX:0,vortexY:0,vortexRadius:120,vortexStrength:0,vortexFalloff:1,vortexDirection:'ccw',vortexStart:0,vortexEnd:1,emitterX:0,emitterY:0,lockSpawnToBirth:true,emitter:'point',emitRadius:100,emitOnEdge:false,emitW:120,emitH:70,emitLine:100,emitArc:180,emitScaleX:1,emitScaleY:1,emitRotX:0,emitRotY:0,emitRotZ:0,trajectory:'radial',radiusS:0,radiusP:90,radiusE:115,travelXS:0,travelXP:0,travelXE:0,travelYS:0,travelYP:0,travelYE:0,attractor:false,attractMode:'pull',attractRadius:160,attractX:0,attractY:0,attractStart:.55,attractStrength:1,attractS:0,attractP:.3,attractE:1,pathEnabled:false,pathStrength:.5,pathWidth:0,pathWidthCurveEnabled:false,pathWidthCurve:[{x:0,y:0,mode:'bezier'},{x:1,y:0,mode:'bezier'}],pathNoise:0,pathNoiseScale:3,pathScatterVel:0,pathScatterRandom:.5,pathSpawnEvenness:1,pathBirthAlong:false,pathBirthSpread:.15,pathBirthRandom:0,pathProgressCurve:[{x:0,y:0,mode:'bezier'},{x:1,y:1,mode:'bezier'}],pathFollow:false,rotateFromNormal:false,pathClosed:false,pathPoints:[{x:0,y:0,outX:55,outY:-75},{x:120,y:-120,inX:-55,inY:75}],spread:360,baseAngle:0,gravity:0,windS:0,windP:0,windE:0,turbS:10,turbP:18,turbE:8,ease:'easeout',scaleS:.7,scaleP:1.1,scaleE:.4,splitScale:false,scaleX:1,scaleY:1,colorS:'#ffffff',colorP:'#ffffff',colorE:'#ffffff',alphaS:0,alphaM:1,alphaE:0,alphaVar:0,opacityFlickerEnabled:false,opacityFlickerAmount:0,opacityFlickerFrequency:8,opacityFlickerSeed:(0x165667b1*(i+1))>>>0,colorNoiseEnabled:false,colorNoiseAmount:0,colorNoiseScale:2,colorNoiseSpeed:0,colorNoiseSeed:(0x27d4eb2d*(i+1))>>>0,colorNoiseA:'#ffffff',colorNoiseB:'#38bdf8',shape:'star',rays:4,sharp:.4,spriteSize:34,useTextureColor:false,textureVariantsEnabled:false,textureVariants:[{texture:'soft',weight:1},{texture:'smoke_puff',weight:1}],rotStart:0,rotSpeed:0,rotVar:0,rotCurveS:0,rotCurveP:0,rotCurveE:0,scaleVar:0,colorMode:'gradient',colorRand:['#ff4444','#44ff88','#4488ff'],pivotX:.5,pivotY:.5,posVar:0,attachment:'particle',blend:'normal',speed:1,prefix:LETTERS[i].toLowerCase()+'_',root:'',rootManual:false,seeds:[],curves:{}}}
 const builtins=[];
 const presetGroups=[];
 const layeredPresets=[];
@@ -1093,7 +1097,7 @@ l.scaleX=1;l.scaleY=1;
 Object.values(EMIT_ANIMS).forEach(a=>{if(!l[a.flag]){a.keys.forEach(k=>delete l[k]);if(l.curves)delete l.curves[curveId(a.keys)]}});
 if(l.emissionMode!=='curve'&&l.curves)delete l.curves[curveId(EMISSION_KEYS)];
 pruneDeadCurves(l);
-if(!keepIdentity)['letter','name','enabled','prefix','root'].forEach(k=>delete l[k]);
+if(!keepIdentity)['letter','name','enabled','prefix','root','rootManual'].forEach(k=>delete l[k]);
 return l
 }
 function axisScaleKeysPresent(l){return['scaleXS','scaleXP','scaleXE','scaleYS','scaleYP','scaleYE'].some(k=>l[k]!==undefined)}
@@ -1162,7 +1166,7 @@ const l=normalizeLayer(layer,i),base=baseLayer(i,duration),dur=clamp(finiteNumbe
 Object.keys(base).forEach(k=>{if(l[k]===undefined)l[k]=base[k]});
 delete l.seeds;delete l._seedSource;delete l._curveSel;delete l._gradSel;delete l._translatePreset;delete l._trajectoryPrefs;
 ['staticLayer','staticSpreadX','staticSpreadY','staticSpreadUniform','perspectiveScale','depthScale','spreadScaleFactor'].forEach(k=>delete l[k]);
-l.letter=LETTERS[i]||l.letter||'X';l.name=String(l.name||base.name);if(/^Layer [A-Z]$/i.test(l.name))l.name='Layer '+(i+1);l.enabled=l.enabled!==false;
+l.letter=LETTERS[i]||l.letter||'X';l.name=String(l.name||base.name);if(/^Layer [A-Z]$/i.test(l.name))l.name='Layer '+(i+1);l.enabled=l.enabled!==false;const autoRoot=safeSpineName(layerTitle(l),'root'),savedRoot=String(l.root||'').trim(),savedRootClean=safeSpineName(savedRoot,'');l.rootManual=!!savedRoot&&(l.rootManual||!!(savedRootClean&&savedRootClean!==autoRoot&&savedRootClean!=='root'));l.root=l.rootManual?savedRoot:autoRoot;
 l.groupId=String(l.groupId||'');l.muted=!!l.muted;l.solo=!!l.solo;
 l.introEnabled=l.introEnabled!==false;l.loopEnabled=l.loopEnabled!==false;l.outroEnabled=l.outroEnabled!==false;
 l.introFadeMode=PHASE_FADE_MODES.includes(l.introFadeMode)?l.introFadeMode:'both';
@@ -1580,11 +1584,28 @@ function safeSpineName(name,fallback='root'){
 const clean=safeFileName(String(name||'').trim()).replace(/\s+/g,'_').replace(/_+/g,'_').replace(/^_+|_+$/g,'');
 return clean||fallback
 }
-function exportParentBoneName(l){return safeSpineName(layerTitle(l),'root')}
+function exportParentBoneName(l){return safeSpineName(l?.rootManual&&String(l.root||'').trim()?l.root:layerTitle(l),'root')}
+function layerExportFileName(l){return safeFileName(layerTitle(l)||('layer_'+(l?.letter||'A')))+'.json'}
+function exportNamePrefix(l,usePrefix=true,prefixOverride=null){const raw=prefixOverride!==null?prefixOverride:(usePrefix?l?.prefix:'p');return safeSpineName(raw,'p').replace(/_+$/,'')||'p'}
+function particleExportName(l,i,usePrefix=true,prefixOverride=null){return`${exportNamePrefix(l,usePrefix,prefixOverride)}_${i}`}
+function uniqueExportPrefixMap(layers,usePrefix=true){
+const used=new Set(),map=new Map();
+layers.forEach((l,i)=>{
+const preferred=exportNamePrefix(l,usePrefix);
+let prefix=preferred;
+if(used.has(prefix)){
+const base=safeSpineName(layerTitle(l)||`${preferred}_${i+1}`,'p').replace(/_+$/,'')||preferred||'p';
+let n=2;prefix=base;
+while(used.has(prefix))prefix=`${base}_${n++}`;
+}
+used.add(prefix);map.set(l,prefix)
+});
+return map
+}
 function singleTextureExportName(l){return resolveTextureName(l,attachmentExists(l.shape)?l.shape:l.attachment)||fallbackTextureName(l)||'particle'}
 function syncLayerExportNames(l){
 if(!l)return l;
-l.root=exportParentBoneName(l);
+if(!l.rootManual)l.root=exportParentBoneName(l);
 l.attachment=singleTextureExportName(l);
 ensureTextureVariants(l).forEach(v=>{v.attachment=resolveTextureName(l,v.texture)});
 return l
@@ -1773,6 +1794,7 @@ return Math.max(0,curveValue(proxy,PATH_WIDTH_KEYS,clamp(t,0,1)))
 return l.pathWidth||0
 }
 function pathSeed01(v,fallback=.5){const n=Number(v);return Number.isFinite(n)?clamp(n+.5,0,1):fallback}
+function unitSeed01(v,fallback=.5){const n=Number(v);return Number.isFinite(n)?clamp(n,0,1):fallback}
 function coherentSignedNoise(seed,x){
 const i=Math.floor(x),f=x-i,u=f*f*f*(f*(f*6-15)+10);
 const a=hashU32((seed+Math.imul(i,0x9e3779b9))>>>0)/2147483647.5-1;
@@ -1809,7 +1831,7 @@ pathRuntimeCache.set(l,{...(cached||{}),centerKey:key,center});
 return center
 }
 function freeformSpawnT(l,i,n,sd){
-const even=shuffledIndex01(l,i,n,!!l.pathClosed),random=pathSeed01(sd?.r,.5),k=clamp(l.pathSpawnEvenness??1,0,1);
+const even=shuffledIndex01(l,i,n,!!l.pathClosed),random=unitSeed01(sd?.r,.5),k=clamp(l.pathSpawnEvenness??1,0,1);
 return clamp(mix(random,even,k),0,l.pathClosed?.9999:1)
 }
 function freeformNormalAngle(l,edge){
@@ -1844,7 +1866,7 @@ return curveValue(proxy,PATH_PROGRESS_KEYS,clamp(lifeT,0,1))
 }
 function pathBirthOffset(l,sd){
 if(!isPathEmitter(l)||!l.pathBirthAlong||!sd)return 0;
-const n=Math.max(1,Math.round(l.count||1)),even=n>1?clamp((sd.i||0)/n,0,.9999):0,random=pathSeed01(sd.r);
+const n=Math.max(1,Math.round(l.count||1)),even=n>1?clamp((sd.i||0)/n,0,.9999):0,random=unitSeed01(sd.r);
 return clamp(mix(even,random,clamp(l.pathBirthRandom||0,0,1))*clamp(l.pathBirthSpread??(l.pathClosed?1:.15),0,l.pathClosed?1:.45),0,.9999)
 }
 function pathMotionT(l,lifeT,sd){
@@ -2095,6 +2117,7 @@ const pt=q('panelTitle');if(pt)pt.textContent=tab;
 renderLayers();
 q('playBtn').onclick=togglePlayback;
 syncPlayButton();
+updateEditModePill();
 q('restartBtn').onclick=()=>{gT=0;particlesDirty=true;forceRedraw=true;updateAnimatedValueBindings()};
 q('undoBtn').onclick=undo;
 q('redoBtn').onclick=redo;
@@ -2115,6 +2138,23 @@ updateHistoryButtons();
 }
 function playPauseIcon(isPlaying){return isPlaying?'<svg viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><rect x="4.2" y="3.3" width="3.2" height="11.4" rx="1.1"/><rect x="10.6" y="3.3" width="3.2" height="11.4" rx="1.1"/></svg>':'<svg viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><path d="M5 3.6a.8.8 0 0 1 1.2-.69l7 4.4a.8.8 0 0 1 0 1.38l-7 4.4A.8.8 0 0 1 5 12.4V3.6Z"/></svg>'}
 function syncPlayButton(){const b=q('playBtn');if(!b)return;b.innerHTML=playPauseIcon(playing);b.title=playing?'Pause':'Play';if(b.setAttribute)b.setAttribute('aria-label',b.title);b.classList.toggle('act',playing);last=performance.now()}
+function currentEditModeStatus(){
+const l=state.layers[active];
+if(q('curveZoomOverlay'))return{label:'Curve Editing',tone:'on'};
+if(vortexEditActive())return{label:'Vortex Editing',tone:'warn'};
+if(attractorEditActive())return{label:'Attractor Editing',tone:'warn'};
+if(colliderEdit&&state.collider?.enabled)return{label:'Collider Editing',tone:'warn'};
+if(pathEdit&&l&&hasEditablePath(l))return{label:'Path Editing',tone:'on'};
+return null
+}
+function updateEditModePill(){
+const pill=q('editModePill');if(!pill)return;
+const status=currentEditModeStatus();
+if(!status){pill.textContent='';pill.title='';pill.className='editModePill';return}
+pill.textContent=status.label;
+pill.title=status.tone==='warn'?status.label+' - emitter gizmo is hidden while this editor is active':status.label;
+pill.className='editModePill on'+(status.tone==='warn'?' warn':'')
+}
 function togglePlayback(){playing=!playing;syncPlayButton()}
 function layerTitle(l){return l.name&&l.name.trim()?l.name.trim():('Layer '+(Math.max(0,state.layers.indexOf(l))+1))}
 function layerTabLabel(l){return layerTitle(l)}
@@ -2307,13 +2347,13 @@ function nextLayerName(){let max=0;state.layers.forEach(l=>{const m=String(l.nam
 function cloneLayerForIndex(src,idx){const l=cleanLayerForStorage(src,true),letter=LETTERS[idx]||LETTERS[state.layers.length]||'X';l.letter=letter;l.name=nextLayerName();l.prefix=letter.toLowerCase()+'_';l.seeds=[];return normalizeLayer(l,idx)}
 function duplicateLayer(){if(state.layers.length>=MAX_LAYERS)return;rememberHistory();const idx=firstFreeLayerIndex();state.layers.splice(active+1,0,cloneLayerForIndex(state.layers[active],idx));active=active+1;layerStackSelection={type:'layer',groupId:''};renderShell();renderControls()}
 function copyLayer(){layerClipboard=cleanLayerForStorage(state.layers[active],true)}
-function pasteLayer(){if(!layerClipboard)return;rememberHistory();const target=state.layers[active],keep={letter:target.letter,enabled:target.enabled,prefix:target.prefix,root:target.root};Object.assign(target,normalizeLayer(layerClipboard,LETTERS.indexOf(target.letter)),keep,{seeds:[]});renderShell();renderControls()}
+function pasteLayer(){if(!layerClipboard)return;rememberHistory();const target=state.layers[active],keep={letter:target.letter,enabled:target.enabled,prefix:target.prefix,root:target.root,rootManual:target.rootManual};Object.assign(target,normalizeLayer(layerClipboard,LETTERS.indexOf(target.letter)),keep,{seeds:[]});renderShell();renderControls()}
 function pasteAsNewLayer(){if(!layerClipboard||state.layers.length>=MAX_LAYERS)return;rememberHistory();const idx=firstFreeLayerIndex();state.layers.push(cloneLayerForIndex(layerClipboard,idx));active=state.layers.length-1;renderShell();renderControls()}
 function row(label,input,value=''){const d=el('div',{className:'row'});d.append(el('label',{},label),input,el('span',{className:'val'},value));return d}
 function sliderFill(inp){const pct=((+inp.value-(+inp.min||0))/((+inp.max||1)-(+inp.min||0))*100).toFixed(1)+'%';inp.style.setProperty('--pct',pct)}
 function range(label,obj,key,min,max,step=1,onChange=()=>{}){if(obj[key]===undefined)obj[key]=0;obj[key]=clamp(Number(obj[key])||0,+min,+max);const num=el('input',{className:'val',type:'number',min,max,step,value:obj[key],oninput:e=>{const v=parseFloat(e.target.value);if(Number.isFinite(v)){obj[key]=clamp(v,+min,+max);inp.value=obj[key];num.value=String(obj[key]);sliderFill(inp);onChange()}}}),inp=el('input',{type:'range',min,max,step,value:obj[key],oninput:e=>{obj[key]=parseFloat(e.target.value);num.value=String(obj[key]);sliderFill(inp);onChange()}});sliderFill(inp);const d=el('div',{className:'row'});d.append(el('label',{},label),inp,num);return d}
 function bindAnimatedValue(input,slider,getValue){animatedValueBindings.push({input,slider,getValue})}
-function updateAnimatedValueBindings(){animatedValueBindings.forEach(b=>{const v=Number(b.getValue());if(!Number.isFinite(v))return;const text=String(r2(v));if(b.input&&b.input.value!==text)b.input.value=text;if(b.slider){b.slider.value=v;sliderFill(b.slider)}})}
+function updateAnimatedValueBindings(){animatedValueBindings.forEach(b=>{if(document.activeElement===b.input||document.activeElement===b.slider)return;const v=Number(b.getValue());if(!Number.isFinite(v))return;const text=String(r2(v));if(b.input&&b.input.value!==text)b.input.value=text;if(b.slider){b.slider.value=v;sliderFill(b.slider)}})}
 function envFlag(keys){return'anim_'+curveId(keys).replace(/[^a-z0-9_]+/gi,'_')}
 function keysVary(obj,keys){return keys.some(k=>Math.abs(Number(obj[k]??0)-Number(obj[keys[0]]??0))>.0001)}
 function curveIsFlat(obj,keys){const pts=obj.curves?.[curveId(keys)];return!Array.isArray(pts)||pts.every(p=>Math.abs(Number(p.y??0)-Number(pts[0].y??0))<.0001)}
@@ -2321,12 +2361,26 @@ function envelopeActive(obj,keys){const f=envFlag(keys);if(obj[f]===undefined)ob
 function setEnvelopeActive(obj,keys,on){const f=envFlag(keys);obj[f]=!!on;if(on)ensureCurve(obj,keys);else{const v=keys.reduce((a,k)=>a+Number(obj[k]||0),0)/keys.length;keys.forEach(k=>obj[k]=v);setFlatCurve(obj,keys,v)}}
 function currentEnvelopeT(){return state.layers[active]?layerTime01(state.layers[active]):0}
 function envelopeControl(label,obj,keys,min,max,step=1,onManual=()=>{},curveTitle=null){
-const activeCurve=envelopeActive(obj,keys),value=activeCurve?curveValue(obj,keys,currentEnvelopeT()):keys.reduce((a,k)=>a+Number(obj[k]||0),0)/keys.length,val=el('input',{className:'val',type:'number',min,max,step,value:String(r2(value)),readOnly:activeCurve});
-const inp=el('input',{type:'range',min,max,step,value,disabled:activeCurve,oninput:e=>{const v=parseFloat(e.target.value);keys.forEach(k=>obj[k]=v);setFlatCurve(obj,keys,v);val.value=String(v);onManual()}});
+const activeCurve=envelopeActive(obj,keys),value=activeCurve?curveValue(obj,keys,currentEnvelopeT()):keys.reduce((a,k)=>a+Number(obj[k]||0),0)/keys.length,val=el('input',{className:'val',type:'number',min,max,step,value:String(r2(value))});
+const shiftAnimatedCurve=v=>{
+const arr=ensureCurve(obj,keys),current=curveValue(obj,keys,currentEnvelopeT()),delta=v-current;
+arr.forEach(p=>p.y=clamp(Number(p.y||0)+delta,+min,+max));
+syncCurveKeys(obj,keys);onManual()
+};
+const setValue=v=>{
+if(!Number.isFinite(v))return;
+v=clamp(v,+min,+max);
+if(activeCurve)shiftAnimatedCurve(v);
+else{keys.forEach(k=>obj[k]=v);setFlatCurve(obj,keys,v);onManual()}
+val.value=String(r2(v));inp.value=v;sliderFill(inp)
+};
+const inp=el('input',{type:'range',min,max,step,value,oninput:e=>setValue(parseFloat(e.target.value))});
+val.oninput=e=>setValue(parseFloat(e.target.value));
+sliderFill(inp);
 if(activeCurve)bindAnimatedValue(val,inp,()=>curveValue(obj,keys,currentEnvelopeT()));
 const wrap=el('div'),r=el('div',{className:'row'});r.append(el('label',{},label),inp,val);wrap.appendChild(r);
 const check=el('input',{type:'checkbox',checked:activeCurve,onchange:e=>{setEnvelopeActive(obj,keys,e.target.checked);renderControls(false)}});
-const cr=el('div',{className:'row check'});cr.append(el('label',{},'Animate'),check,el('span',{className:'hint'},activeCurve?'Curve adds lifetime/cycle motion':'Static value'));
+const cr=el('div',{className:'row check'});cr.append(el('label',{},'Animate'),check,el('span',{className:'hint'},activeCurve?'Slider offsets the whole curve':'Static value'));
 wrap.appendChild(cr);
 if(activeCurve){const det=managedDetails(detailKey(['env',tab,active,label,curveId(keys)]),'advanced',curveTitle||label+' curve',true);const body=el('div',{className:'advancedBody'});body.append(curveEditor(label,obj,keys,min,max,onManual,step));det.appendChild(body);wrap.appendChild(det)}
 return wrap;
@@ -2372,6 +2426,7 @@ top.append(el('div',{className:'curveZoomTitle'},title),closeBtn);
 const body=el('div',{className:'curveZoomBody'});
 body.appendChild(curveEditor(title,obj,keys,min,max,()=>{onManual();forceRedraw=true},step,true));
 panel.append(top,body);overlay.appendChild(panel);document.body.appendChild(overlay);
+updateEditModePill();
 const r=anchor?.getBoundingClientRect?.()||{left:60,top:120,width:300,height:0};
 const vw=window.innerWidth||1200,vh=window.innerHeight||800,rightInspector=330;
 const panelW=Math.min(620,Math.max(360,vw-r.left-rightInspector-16));
@@ -2535,7 +2590,7 @@ function sectionWithDefault(title,defaultOpen,...children){const key=detailKey([
 function detailKey(parts){return parts.filter(v=>v!==undefined&&v!==null).join('::')}
 function managedDetails(key,className,summaryText,defaultOpen=false){const d=el('details',{className,open:detailsOpen[key]??defaultOpen});d.dataset.key=key;d.appendChild(el('summary',{},summaryText));d.addEventListener('toggle',()=>{detailsOpen[key]=d.open});return d}
 function keepTextureVariantsOpen(){detailsOpen[detailKey(['section','particle',active,'Texture Variants'])]=true}
-function renderControls(full=true){requestUIRedraw('controls rebuild');animatedValueBindings=[];state.layers.forEach(clampLayerLife);if(full)renderLayers();tab=normalizeTabName(tab);const c=q('controls'),scroll=c.scrollTop||0,l=state.layers[active];c.innerHTML='';sectionPanel='main';sectionRenderIndex=0;if(tab==='Cycle')cycleUI(c,l);if(tab==='Motion')motionUI(c,l);if(tab==='Color')particleAnimUI(c,l);if(tab==='Presets')presetsUI(c,l);if(tab==='Export')exportUI(c,l);c.scrollTop=scroll;sectionPanel='particle';renderParticlePanel();sectionPanel='main';updateAnimatedValueBindings()}
+function renderControls(full=true){requestUIRedraw('controls rebuild');animatedValueBindings=[];state.layers.forEach(clampLayerLife);if(full)renderLayers();tab=normalizeTabName(tab);const c=q('controls'),scroll=c.scrollTop||0,l=state.layers[active];c.innerHTML='';sectionPanel='main';sectionRenderIndex=0;if(tab==='Cycle')cycleUI(c,l);if(tab==='Motion')motionUI(c,l);if(tab==='Color')particleAnimUI(c,l);if(tab==='Presets')presetsUI(c,l);if(tab==='Export')exportUI(c,l);c.scrollTop=scroll;sectionPanel='particle';renderParticlePanel();sectionPanel='main';updateAnimatedValueBindings();updateEditModePill()}
 function durationRange(){const d=range('Duration (s)',state,'duration',.1,8,.01),inp=d.children[1],num=d.children[2],sync=(prev=state.duration)=>{state.duration=clamp(Number(state.duration)||.1,.1,8);let lifeChanged=false;state.layers.forEach(l=>{const beforeLife=l.life,beforeVar=l.lifeVar;if(!l.timingEnabled)l.startTime=0;if(!l.hardTrim){l.endTime=state.duration;l.timeOffset=0}clampLayerLife(l);if(l.life!==beforeLife||l.lifeVar!==beforeVar)lifeChanged=true});gT=Math.min(gT,previewDuration());inp.value=state.duration;num.value=String(state.duration);sliderFill(inp);updateStaggerVisuals();if((lifeChanged&&state.duration<prev)||state.duration>prev)requestAnimationFrame(()=>renderControls(false))};inp.oninput=e=>{const prev=state.duration;state.duration=parseFloat(e.target.value);sync(prev)};num.oninput=e=>{const v=parseFloat(e.target.value);if(Number.isFinite(v)){const prev=state.duration;state.duration=v;sync(prev)}};return d}
 function drawStaggerTrack(track,l){
 if(!track||!l)return;track.innerHTML='';
@@ -2665,7 +2720,7 @@ box.appendChild(row);
 return box
 }
 function layerUsesTextureVariants(l){return!!l.textureVariantsEnabled&&activeTextureVariants(l).length>0}
-function layerExportDropdown(l,i){syncLayerExportNames(l);const det=managedDetails(detailKey(['exportLayer',l.letter]),'advanced',layerTabLabel(l)+' Export Settings',false),body=el('div',{className:'advancedBody'});if(layerUsesTextureVariants(l))body.append(wide('Attachment names',variantAttachmentExportRows(l)));else body.append(wide('Attachment name',el('input',{type:'text',readOnly:true,title:'Auto attachment name from selected texture',value:singleTextureExportName(l)})));body.append(wide('Export Prefix',el('input',{type:'text',value:l.prefix,oninput:e=>l.prefix=e.target.value})),wide('Parent bone',el('input',{type:'text',readOnly:true,title:'Auto parent bone from layer name',value:exportParentBoneName(l)})),wide('Download',el('button',{className:'btn small',onclick:()=>exportWithOptionalTextures(l,'layer_'+l.letter+'.json',false)},'Export '+layerTabLabel(l))));det.appendChild(body);return det}
+function layerExportDropdown(l,i){syncLayerExportNames(l);const det=managedDetails(detailKey(['exportLayer',l.letter]),'advanced',layerTabLabel(l)+' Export Settings',false),body=el('div',{className:'advancedBody'});if(layerUsesTextureVariants(l))body.append(wide('Attachment names',variantAttachmentExportRows(l)));else body.append(wide('Attachment name',el('input',{type:'text',readOnly:true,title:'Auto attachment name from selected texture',value:singleTextureExportName(l)})));body.append(wide('Export Prefix',el('input',{type:'text',value:l.prefix,oninput:e=>l.prefix=e.target.value})),wide('Parent bone',el('input',{type:'text',title:'Clear to use layer name automatically',placeholder:exportParentBoneName(Object.assign({},l,{rootManual:false})),value:l.rootManual?l.root:exportParentBoneName(l),oninput:e=>{const v=e.target.value;l.rootManual=!!v.trim();l.root=v}})),wide('Download',el('button',{className:'btn small',onclick:()=>exportWithOptionalTextures(l,layerExportFileName(l),true)},'Export '+layerTabLabel(l))));det.appendChild(body);return det}
 function layerActionRow(l,i){const actions=el('div',{className:'tools'});actions.append(el('button',{className:'btn small',onclick:()=>withActive(i,duplicateLayer)},'Duplicate'),el('button',{className:'btn small bad',disabled:state.layers.length===1,onclick:()=>deleteLayerAt(i)},'Delete'));return actions}
 function layerDetailsUI(l,i){
 const d=managedDetails(detailKey(['layer',l.letter||i]),rowStateClass('presetGroup layerRow',l,false),`${i+1}. ${layerTabLabel(l)}${l.enabled?'':' (off)'}`,i===active);
@@ -2712,6 +2767,7 @@ const perLayer=el('div');
 state.layers.forEach((l,i)=>perLayer.appendChild(layerExportDropdown(l,i)));
 const downloads=el('div',{className:'tools'});
 downloads.appendChild(el('button',{className:'btn small good',onclick:()=>exportWithOptionalTextures(null,state.fileName||'particle_anim.json',true)},state.exportVisibleOnly?'Export visible':'Export all enabled'));
+downloads.appendChild(el('button',{className:'btn small',onclick:()=>exportPngSequence()},'PNG sequence'));
 return section('Export',wide('File name',filename),wide('Spine version',version),wide('Reuse bones',reuse),wide('Textures',textures),wide('Export visible layers only',visibleOnly),perLayer,wide('Download',downloads));
 }
 function deleteLayerAt(i){if(state.layers.length===1)return;rememberHistory();state.layers.splice(i,1);active=Math.min(Math.max(0,active>=i?active-1:active),state.layers.length-1);layerStackSelection={type:'layer',groupId:''};renderShell();renderControls()}
@@ -3252,7 +3308,7 @@ const save=el('button',{className:'btn good',onclick:saveCurrent},'+ Save curren
 c.append(section('My presets',save,my));
 }
 function applyOneShotEmissionDefaults(l,p){if(p.loop!==false||p.emissionMode!==undefined)return;l.emissionMode=(p.stagger||0)>0?'sequential':'burst';l.emissionStart=0;l.emissionDuration=l.emissionMode==='burst'?0:Math.min(state.duration,Math.max(0,(Math.round(l.count)-1)*(p.stagger||0)))}
-function applyPreset(p){rememberHistory();const l=state.layers[active],keep={letter:l.letter,enabled:l.enabled,prefix:l.prefix,root:l.root};if(p.duration)state.duration=p.duration;Object.assign(l,normalizeLayer(p,LETTERS.indexOf(l.letter)),keep);if(p.life===undefined)l.life=state.duration;applyOneShotEmissionDefaults(l,p);applyTrajectoryTranslatePreset(l);state.loop=p.loop===false?false:true;l.seeds=[];gT=0;playing=true;syncPlayButton();renderControls()}
+function applyPreset(p){rememberHistory();const l=state.layers[active],keep={letter:l.letter,enabled:l.enabled,prefix:l.prefix,root:l.root,rootManual:l.rootManual};if(p.duration)state.duration=p.duration;Object.assign(l,normalizeLayer(p,LETTERS.indexOf(l.letter)),keep);if(p.life===undefined)l.life=state.duration;applyOneShotEmissionDefaults(l,p);applyTrajectoryTranslatePreset(l);state.loop=p.loop===false?false:true;l.seeds=[];gT=0;playing=true;syncPlayButton();renderControls()}
 function applyLayeredPreset(p){
 rememberHistory();
 state.duration=p.duration||3;
@@ -3264,17 +3320,17 @@ active=0;tab='Cycle';gT=0;playing=true;renderShell();renderControls();
 function saveCurrent(){const name=prompt('Preset name');if(!name)return;state.customPresets.push({name,duration:state.duration,loop:state.loop,groups:state.groups.map(sanitizeGroup),collider:sanitizeCollider(state.collider),thumbnail:thumbnailFromCurrentCanvas(),layers:state.layers.map(l=>cleanLayerForStorage(l,true))});savePresets();renderControls()}
 function loadCustom(i){rememberHistory();const p=state.customPresets[i];state.duration=p.duration;state.loop=p.loop;state.collider=sanitizeCollider(p.collider);colliderEdit=false;colliderDrag=null;state.groups=sanitizeGroups(p.groups||[],p.layers||[]);state.layers=(p.layers||[]).slice(0,MAX_LAYERS).map((l,i)=>sanitizeLayer(l,i,state.duration));active=0;renderShell();renderControls()}
 function renameCustom(i){const name=prompt('New name',state.customPresets[i].name);if(name){state.customPresets[i].name=name;savePresets();renderControls()}}
-function drawShape(l,x,y,r,textureName=null,variant=null){
+function drawShape(l,x,y,r,textureName=null,variant=null,targetCtx=ctx){
 const px=textureName&&variant?textureVariantPivotX(variant):(l.pivotX??0.5),py=textureName&&variant?textureVariantPivotY(variant):(l.pivotY??0.5);
 const requestedTexture=textureName||l.shape;
 const att=findAttachment(requestedTexture);
 if(att){
 const box=getWorldTextureSize(l,variant,null,requestedTexture,r*2),dx=x+box.drawX,dy=y+box.drawY;
-if(l.useTextureColor){ctx.drawImage(att.img,dx,dy,box.drawW,box.drawH);return}
-const tw=Math.max(2,Math.ceil(box.drawW)),th=Math.max(2,Math.ceil(box.drawH));tintCanvas.width=tw;tintCanvas.height=th;tintCtx.clearRect(0,0,tw,th);tintCtx.drawImage(att.img,0,0,tw,th);tintCtx.globalCompositeOperation='source-in';tintCtx.fillStyle=ctx.fillStyle;tintCtx.fillRect(0,0,tw,th);tintCtx.globalCompositeOperation='source-over';ctx.drawImage(tintCanvas,dx,dy,box.drawW,box.drawH);return}
+if(l.useTextureColor){targetCtx.drawImage(att.img,dx,dy,box.drawW,box.drawH);return}
+const tw=Math.max(2,Math.ceil(box.drawW)),th=Math.max(2,Math.ceil(box.drawH));tintCanvas.width=tw;tintCanvas.height=th;tintCtx.clearRect(0,0,tw,th);tintCtx.drawImage(att.img,0,0,tw,th);tintCtx.globalCompositeOperation='source-in';tintCtx.fillStyle=targetCtx.fillStyle;tintCtx.fillRect(0,0,tw,th);tintCtx.globalCompositeOperation='source-over';targetCtx.drawImage(tintCanvas,dx,dy,box.drawW,box.drawH);return}
 const ox=(px-0.5)*r*2,oy=(py-0.5)*r*2;
 const cx=x-ox,cy=y-oy;
-ctx.beginPath();if(l.shape==='circle')ctx.arc(cx,cy,r,0,Math.PI*2);else if(l.shape==='diamond'){ctx.moveTo(cx,cy-r);ctx.lineTo(cx+r,cy);ctx.lineTo(cx,cy+r);ctx.lineTo(cx-r,cy);ctx.closePath()}else{for(let i=0;i<l.rays*2;i++){const a=i*Math.PI/l.rays-Math.PI/2,rr=i%2?r*l.sharp:r;i?ctx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr):ctx.moveTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr)}ctx.closePath()}ctx.fill()}
+targetCtx.beginPath();if(l.shape==='circle')targetCtx.arc(cx,cy,r,0,Math.PI*2);else if(l.shape==='diamond'){targetCtx.moveTo(cx,cy-r);targetCtx.lineTo(cx+r,cy);targetCtx.lineTo(cx,cy+r);targetCtx.lineTo(cx-r,cy);targetCtx.closePath()}else{for(let i=0;i<l.rays*2;i++){const a=i*Math.PI/l.rays-Math.PI/2,rr=i%2?r*l.sharp:r;i?targetCtx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr):targetCtx.moveTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr)}targetCtx.closePath()}targetCtx.fill()}
 function drawPivotMarkers(points){
 if(!pivotVisible||!points?.length)return;
 const r=Math.max(1.6,2.8/view.zoom),lw=Math.max(.45,.75/view.zoom);
@@ -3692,6 +3748,7 @@ particleBones+=groups;
 return{bones:boneRoots.size+particleBones,reusedBones,totalParticles}
 }
 function drawViewerAnalyticsOverlay(){
+if(pngSequenceExporting)return;
 const a=viewerAnalytics(),lines=[`bones ${a.bones}`];
 if(state.reuseBones)lines.push(`reused ${a.reusedBones}`);
 ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.font='10px monospace';ctx.textBaseline='top';
@@ -3823,7 +3880,7 @@ return r2(k.angle??0)
 function rotateTrackRelativeToSetup(track,setupRot){
 if(!track||!track.length)return null;
 const out=track.map(k=>{const n=clone(k);n.angle=r2((n.angle??0)-setupRot);return n});
-const compact=compactRotateTrack(cleanKfs(out));
+const compact=compactRotateTrack(cleanKfs(out),{ensureZero:false});
 return compact&&compact.some(k=>Math.abs(k.angle||0)>.01)?compact:null
 }
 function bakeSetupRotation(bone,track){
@@ -3898,6 +3955,18 @@ function bezSC(t1,s1,t2,s2,mode='linear'){return bezSCXY(t1,s1,s1,t2,s2,s2,mode)
 function bezSCXY(t1,x1,y1,t2,x2,y2,mode='linear'){const s=t2-t1,dx=x2-x1,dy=y2-y1,[f1,f2]=mode==='easeout'||mode==='out'?[.25,.77]:mode==='easein'?[.77,.25]:mode==='easeinout'?[.15,.85]:mode==='decel'?[.33,.85]:[.33,.67],a=r4(t1+s*.33),c=r4(t1+s*.67);return[a,r4(x1+dx*f1),c,r4(x1+dx*f2),a,r4(y1+dy*f1),c,r4(y1+dy*f2)]}
 function colorBezier(t1,c1,t2,c2,mode='linear'){const a=rgbaParts(c1),b=rgbaParts(c2),s=t2-t1,[f1,f2]=mode==='out'?[.25,.77]:mode==='decel'?[.33,.85]:[.33,.67],out=[];for(let i=0;i<4;i++){const d=(b[i]-a[i])/255;out.push(r4(t1+s*.33),r4(a[i]/255+d*f1),r4(t1+s*.67),r4(a[i]/255+d*f2))}return out}
 function cleanKfs(kfs){return kfs.filter((k,i)=>i===0||r4(k.time??0)>=r4(kfs[i-1].time??0))}
+function compactFlatHoldKeys(track,kind='value'){
+if(!Array.isArray(track)||track.length<3)return track;
+const fields=kind==='scale'?['x','y']:['value'],fallback=f=>kind==='scale'?1:0,same=(a,b)=>fields.every(f=>Math.abs(Number(a?.[f]??fallback(f))-Number(b?.[f]??fallback(f)))<.0001),protectedKey=k=>!k||k.curve!==undefined||k._nosmooth||k._break||k._event||k._hidden;
+let i=1;
+while(i<track.length-1){
+const a=track[i-1],b=track[i],c=track[i+1];
+if(protectedKey(a)||protectedKey(b)||a.curve==='stepped'||b.curve==='stepped'){i++;continue}
+if(same(a,b)&&same(b,c)){track.splice(i,1);continue}
+i++
+}
+return track
+}
 function compactAttachmentTrack(track){
 const out=[];
 track.forEach(k=>{
@@ -4009,19 +4078,55 @@ if(curve.length===16&&!rgbaCurveIsLinear(track,i,curve))track[i].curve=curve
 return sanitizeRgbaTrackCurves(stripTrackMeta(track))
 }
 function finalizeRgbaTrack(track,opts={}){const clean=compactRgbaTrack(cleanKfs(track),opts);return opts.curves===false?stripTrackMeta(clean):applyRgbaTrackCurves(clean)}
-function compactRotateTrack(track){
+function simplifyRotateValueTrack(track,tol=1.5){
+if(!Array.isArray(track)||track.length<9)return track;
+const keep=new Set([0,track.length-1]),valueOf=k=>Number(k?.value??0),breakBetween=(a,b)=>!a||!b||a.curve==='stepped'||b.curve==='stepped'||Math.abs(valueOf(b)-valueOf(a))>180;
+for(let j=0;j<track.length;j++)if(track[j].curve==='stepped')keep.add(j);
+const fit=(aIdx,bIdx)=>{
+if(bIdx-aIdx<2)return;
+const a=track[aIdx],b=track[bIdx],t0=a.time??0,t2=b.time??0,span=t2-t0;
+if(span<=.0001){for(let j=aIdx+1;j<bIdx;j++)keep.add(j);return}
+const av=valueOf(a),bv=valueOf(b);
+let worst=0,worstIdx=-1;
+for(let j=aIdx+1;j<bIdx;j++){
+const k=track[j],u=((k.time??0)-t0)/span,expected=av+(bv-av)*u,err=Math.abs(valueOf(k)-expected);
+if(err>worst){worst=err;worstIdx=j}
+}
+if(worstIdx>=0&&worst>tol){keep.add(worstIdx);fit(aIdx,worstIdx);fit(worstIdx,bIdx)}
+};
+for(let s=0;s<track.length-1;){
+let e=s+1;
+while(e<track.length&&!breakBetween(track[e-1],track[e]))e++;
+e--;
+keep.add(s);keep.add(e);
+fit(s,e);
+s=Math.max(e+1,s+1)
+}
+const next=[...keep].sort((a,b)=>a-b).map(i=>track[i]);
+track.splice(0,track.length,...next);
+return track
+}
+function compactRotateTrack(track,opts={}){
 if(!track||!track.length)return track;
-ensureZeroKey(track,{angle:0});
+if(opts.ensureZero!==false)ensureZeroKey(track,{angle:0});
 track.forEach(k=>{k.value=Number(k.angle??0);delete k.angle});
+while(track.length>1&&(track[0].time??0)<(track[1].time??0)&&!track[0].curve&&!track[1].curve&&Math.abs(Number(track[0].value??0)-Number(track[1].value??0))<.0001)track.shift();
+compactFlatHoldKeys(track,'value');
 compactTrack(track,'value',false);
+if(opts.simplify)simplifyRotateValueTrack(track);
 track.forEach(k=>{k.angle=r2(k.value??0);delete k.value});
 return track
 }
 function curveFractions(l,keysets){const out=new Set();keysets.forEach(keys=>ensureCurve(l,keys).forEach(p=>out.add(r4(p.x))));return[...out].sort((a,b)=>a-b)}
 function attractorFractions(l){if(!l.attractor)return[];ensureAttractorCurve(l);const start=clamp(l.attractStart??.55,0,.98),out=new Set([start,1]);ensureCurve(l,ATTR_KEYS).forEach(p=>out.add(r4(start+(1-start)*p.x)));return[...out].sort((a,b)=>a-b)}
 function buildRotateTrack(l,i,cycle,dur){
-const hasCurve=l.curves&&l.curves[curveId(['rotCurveS','rotCurveP','rotCurveE'])],usePathRot=pathMotionActive(l)&&l.pathFollow,useNormalRot=rotateFromNormalActive(l);if(!(l.rotStart||l.rotSpeed||l.rotVar||hasCurve||usePathRot||useNormalRot))return null;
-const n=Math.round(l.count);ensureSeeds(l,n);const sd=l.seeds[i],start=r4(particleStart(l,i,cycle)),times=new Set([0,cycle,start]);
+const rotKeys=['rotCurveS','rotCurveP','rotCurveE'],hasCurve=l.curves&&l.curves[curveId(rotKeys)],curveDynamic=hasCurve&&!curveIsFlat(l,rotKeys),usePathRot=pathMotionActive(l)&&l.pathFollow,useNormalRot=rotateFromNormalActive(l);if(!(l.rotStart||l.rotSpeed||l.rotVar||hasCurve||usePathRot||useNormalRot))return null;
+const n=Math.round(l.count);ensureSeeds(l,n);const sd=l.seeds[i],start=r4(particleStart(l,i,cycle));
+if(!(l.rotSpeed||curveDynamic||usePathRot||useNormalRot)){
+const st=localParticleState(l,i,0,cycle,start);
+return compactRotateTrack([{angle:r2(st.rot||0)}],{ensureZero:false})
+}
+const times=new Set([0,cycle,start]);
 if(usePathRot||useNormalRot&&isPathEmitter(l))advancedMotionFractions(l).forEach(f=>times.add(r4(start+particleLife(l,i,cycle)*f)));
 if(!state.loop){const life=particleLife(l,i,cycle),end=r4(Math.min(dur,start+life));times.add(end);if(start>0)times.add(r4(Math.max(0,start-ONE_FRAME)));times.add(r4(start+life*.5));const keys=[];[...times].filter(t=>t<=dur).sort((a,b)=>a-b).forEach(t=>{const local=clamp(t-start,0,life),st=localParticleState(l,i,local,cycle,t),k={angle:r2(st.rot||0)};addKf(keys,t,k)});return compactRotateTrack(cleanKfs(keys))}
 if(start>0)times.add(r4(Math.max(0,start-ONE_FRAME)));else times.add(r4(cycle-ONE_FRAME));
@@ -4134,6 +4239,7 @@ return compactTrack(track,kind,true);
 }
 function buildPackedTimelines(l,indices,cycle,dur){
 const tx=[],ty=[],sc=[],rgba=[],rot=[],attach=[],variants=layerUsesTextureVariants(l);
+const rotKeys=['rotCurveS','rotCurveP','rotCurveE'],hasRotCurve=l.curves&&l.curves[curveId(rotKeys)],curveDynamic=hasRotCurve&&!curveIsFlat(l,rotKeys),usePathRot=pathMotionActive(l)&&l.pathFollow,useNormalRot=rotateFromNormalActive(l),staticPackedRot=!!(l.rotStart||hasRotCurve)&&!(l.rotSpeed||l.rotVar||curveDynamic||usePathRot||useNormalRot);
 ensureSeeds(l,Math.round(l.count));
 indices.slice().sort((a,b)=>particleStart(l,a,cycle)-particleStart(l,b,cycle)).forEach(i=>{
 const start=r4(particleStart(l,i,cycle)),life=particleLife(l,i,cycle),end=r4(Math.min(cycle,start+life));
@@ -4147,7 +4253,7 @@ const sampleFs=new Set([0,.25,.5,.75,1,...gradientFractions(l),...attractorFract
 [...sampleFs].sort((a,b)=>a-b).forEach(f=>{
 const local=life*f,t=r4(start+local);if(t>cycle)return;
 addPackedSample(l,i,t,local,cycle,tx,ty,sc,rgba);
-const _hasCurve=l.curves&&l.curves[curveId(['rotCurveS','rotCurveP','rotCurveE'])];if(l.rotStart||l.rotSpeed||l.rotVar||_hasCurve||(pathMotionActive(l)&&l.pathFollow)||rotateFromNormalActive(l)){const stRot=localParticleState(l,i,local,cycle,t);addKf(rot,t,{angle:r2(stRot.rot||0)})}
+const _hasCurve=hasRotCurve;if(!staticPackedRot&&(l.rotStart||l.rotSpeed||l.rotVar||_hasCurve||usePathRot||useNormalRot)){const stRot=localParticleState(l,i,local,cycle,t);addKf(rot,t,{angle:r2(stRot.rot||0)})}
 });
 addPackedSample(l,i,end,life,cycle,tx,ty,sc,rgba,'stepped');
 addKf(rgba,end,{color:transparentColor(l,1),curve:'stepped'});
@@ -4158,7 +4264,8 @@ ensureZeroKey(tx,{});ensureZeroKey(ty,{});ensureZeroScaleKey(sc,l,first);ensureZ
 const loopStartIndex=indices.find(i=>r4(particleStart(l,i,cycle))===0);
 addKf(tx,cycle,r2(p0.x)!==0?{value:r2(p0.x)}:{});addKf(ty,cycle,r2(p0.y)!==0?{value:r2(p0.y)}:{});addKf(sc,cycle,exportScaleKey(l,first,p0));addKf(rgba,cycle,{color:state.loop&&loopStartIndex!==undefined?colorForLayer(l,0,particleAlphaAtLocal(l,loopStartIndex,0,cycle,0),l.seeds[loopStartIndex]):transparentColor(l,0)});
 const mode=easeCurveMode(l);
-return{tx:repeatTrack(applyTrackEasing(cleanKfs(tx),mode),l.speed,cycle,dur),ty:repeatTrack(applyTrackEasing(cleanKfs(ty),mode),l.speed,cycle,dur),sc:repeatTrack(applyTrackEasing(cleanKfs(sc),mode,'scale'),l.speed,cycle,dur),rgba:repeatTrack(finalizeRgbaTrack(rgba,opacityFlickerActive(l)?{curves:false}:{}),l.speed,cycle,dur),rot:rot.length?repeatTrack(compactRotateTrack(cleanKfs(rot)),l.speed,cycle,dur):null,attachment:variants?repeatTrack(compactAttachmentTrack(cleanKfs(attach)),l.speed,cycle,dur):null}
+const staticRot=staticPackedRot?compactRotateTrack([{angle:r2(localParticleState(l,indices[0],0,cycle,0).rot||0)}],{ensureZero:false}):null;
+return{tx:repeatTrack(applyTrackEasing(cleanKfs(tx),mode),l.speed,cycle,dur),ty:repeatTrack(applyTrackEasing(cleanKfs(ty),mode),l.speed,cycle,dur),sc:repeatTrack(applyTrackEasing(cleanKfs(sc),mode,'scale'),l.speed,cycle,dur),rgba:repeatTrack(finalizeRgbaTrack(rgba,opacityFlickerActive(l)?{curves:false}:{}),l.speed,cycle,dur),rot:staticRot||(rot.length?repeatTrack(compactRotateTrack(cleanKfs(rot),{simplify:true}),l.speed,cycle,dur):null),attachment:variants?repeatTrack(compactAttachmentTrack(cleanKfs(attach)),l.speed,cycle,dur):null}
 }
 function timedSampleTimes(l,dur){
 const r=layerTimeRange(l,dur),times=new Set([0,dur,r.start,r.end]);
@@ -4427,6 +4534,7 @@ if(c)a.curve=c
 return track
 }
 function compactTrack(track,kind='value',allowBezier=false){
+compactFlatHoldKeys(track,kind);
 const eps=kind==='scale'?0.003:0.15;
 let i=1;
 while(i<track.length-1){
@@ -4490,10 +4598,10 @@ return orderedLayers().filter(l=>state.exportVisibleOnly?exportLayerVisible(l):l
 }
 function buildJSON(onlyLayer=null,usePrefix=true){
 state.layers.forEach(clampLayerLife);
-const layers=exportLayerList(onlyLayer),bones=[{name:'root'}],slots=[],skinA={},animBones={},animSlots={},dur=state.duration,spine=state.spineVersion||'4.2',reuse=state.reuseBones;
+const layers=exportLayerList(onlyLayer),bones=[{name:'root'}],slots=[],skinA={},animBones={},animSlots={},dur=state.duration,spine=state.spineVersion||'4.2',reuse=state.reuseBones,prefixMap=uniqueExportPrefixMap(layers,usePrefix);
 layers.forEach(l=>{
 syncLayerExportNames(l);
-const prefix=usePrefix?l.prefix:'p_',root=exportParentBoneName(l);
+const root=exportParentBoneName(l);
 const rootOff=rootOffsetForLayer(l,root);
 if(root!=='root'&&!bones.some(b=>b.name===root))bones.push({name:root,parent:'root',x:rootOff.x,y:r2(-rootOff.y)});
 const n=Math.round(l.count),cycle=layerCycleLength(l,dur);
@@ -4502,7 +4610,7 @@ const sampled=layerHasTiming(l,dur)||!!state.collider?.enabled,variants=layerUse
 const packedGroups=sampled?Array.from({length:n},(_,i)=>[i]):(reuse?packParticleIndices(l,n,cycle):Array.from({length:n},(_,i)=>[i]));
 const groups=particleOrderGroups(l,packedGroups);
 groups.forEach((group,gi)=>{
-const i=group[0],bn=`${prefix}bone_${gi}`,sn=`${prefix}slot_${gi}`,att=variants?attachmentNameForParticle(l,i):singleTextureExportName(l);
+const i=group[0],bn=particleExportName(l,gi,usePrefix,prefixMap.get(l)),sn=bn,att=variants?attachmentNameForParticle(l,i):singleTextureExportName(l);
 const bone={name:bn,parent:root};
 bones.push(bone);
 const slot={name:sn,bone:bn,attachment:att,color:'ffffff00'};
@@ -4569,9 +4677,9 @@ addKf(track,dur,{color:scaleRgbaAlpha(color,endAlpha)});
 return track
 }
 function cleanAnimationName(name,fallback){return String(name||fallback).trim().replace(/[^\w .-]+/g,'_')||fallback}
-function phaseLayerForTargetName(name,layers,usePrefix,onlyLayer){
+function phaseLayerForTargetName(name,layers,usePrefix,onlyLayer,prefixMap=null){
 if(onlyLayer)return onlyLayer;
-return layers.find(l=>String(name||'').startsWith(usePrefix?l.prefix:'p_'))||layers[0]||null
+return layers.find(l=>String(name||'').startsWith(exportNamePrefix(l,usePrefix,prefixMap?.get(l))+'_'))||layers[0]||null
 }
 function phaseAlphaFactor(phase,layer,t,dur){
 if(phase==='loop')return 1;
@@ -4682,16 +4790,16 @@ if(!Array.isArray(track)||!Array.isArray(loopTrack)||!loopTrack.length)return tr
 addKf(track,time,{color:scaleRgbaAlpha(loopTrack[0].color||'ffffff00',alphaFactor)});
 return cleanKfs(track)
 }
-function phaseExportGroups(l,dur,usePrefix=true){
+function phaseExportGroups(l,dur,usePrefix=true,prefixOverride=null){
 const n=Math.round(l.count),cycle=layerCycleLength(l,dur),sampled=layerHasTiming(l,dur)||!!state.collider?.enabled,packedGroups=sampled?Array.from({length:n},(_,i)=>[i]):(state.reuseBones?packParticleIndices(l,n,cycle):Array.from({length:n},(_,i)=>[i]));
-return particleOrderGroups(l,packedGroups).map((group,gi)=>({group,gi,i:group[0],bn:`${usePrefix?l.prefix:'p_'}bone_${gi}`,sn:`${usePrefix?l.prefix:'p_'}slot_${gi}`}))
+return particleOrderGroups(l,packedGroups).map((group,gi)=>{const name=particleExportName(l,gi,usePrefix,prefixOverride);return{group,gi,i:group[0],bn:name,sn:name}})
 }
-function buildIntroBirthAnimation(loopAnim,dur,layers,usePrefix,onlyLayer){
+function buildIntroBirthAnimation(loopAnim,dur,layers,usePrefix,onlyLayer,prefixMap=null){
 const out={slots:{},bones:{}},loopDur=phaseDuration('loop'),baseSamples=[0,.12,.25,.5,.75,1];
 layers.forEach(l=>{
 syncLayerExportNames(l);
 const root=exportParentBoneName(l),rootOff=rootOffsetForLayer(l,root),n=Math.round(l.count);ensureSeeds(l,n);
-phaseExportGroups(l,loopDur,usePrefix).forEach(({i,bn,sn})=>{
+phaseExportGroups(l,loopDur,usePrefix,prefixMap?.get(l)).forEach(({i,bn,sn})=>{
 const boneOut={translatex:[],translatey:[],scale:[]},slotOut={rgba:[]},hasRot=!!loopAnim.bones?.[bn]?.rotate;
 if(hasRot)boneOut.rotate=[];
 const cycle=layerCycleLength(l,loopDur),birthP=introBirthProgress(l,i,cycle),samples=[...new Set([...baseSamples,birthP,Math.min(1,birthP+(1-birthP)*.08),Math.min(1,birthP+(1-birthP)*.22)])].sort((a,b)=>a-b);
@@ -4711,12 +4819,12 @@ if(loopAnim.slots?.[sn]?.attachment)out.slots[sn].attachment=[clone(loopAnim.slo
 });
 return out
 }
-function buildOutroDrainAnimation(loopAnim,dur,layers,usePrefix,onlyLayer){
+function buildOutroDrainAnimation(loopAnim,dur,layers,usePrefix,onlyLayer,prefixMap=null){
 const out={slots:{},bones:{}},loopDur=phaseDuration('loop'),baseSamples=[0,.12,.25,.5,.75,1];
 layers.forEach(l=>{
 syncLayerExportNames(l);
 const root=exportParentBoneName(l),rootOff=rootOffsetForLayer(l,root),n=Math.round(l.count);ensureSeeds(l,n);
-phaseExportGroups(l,loopDur,usePrefix).forEach(({i,bn,sn})=>{
+phaseExportGroups(l,loopDur,usePrefix,prefixMap?.get(l)).forEach(({i,bn,sn})=>{
 const boneOut={translatex:[],translatey:[],scale:[]},slotOut={rgba:[]},hasRot=!!loopAnim.bones?.[bn]?.rotate,cycle=layerCycleLength(l,loopDur),life=particleLife(l,i,cycle),seamAge=loopSeamAge(l,i,cycle),deathT=life-seamAge;
 if(hasRot)boneOut.rotate=[];
 const samples=[...new Set([...baseSamples,deathT>0&&deathT<dur?deathT/dur:null].filter(v=>v!==null).map(v=>clamp(v,0,1)))].sort((a,b)=>a-b);
@@ -4739,22 +4847,22 @@ if(loopAnim.slots?.[sn]?.attachment)out.slots[sn].attachment=[clone(loopAnim.slo
 });
 return out
 }
-function applyPhaseAnimationVisuals(anim,phase,dur,layers,usePrefix,onlyLayer){
+function applyPhaseAnimationVisuals(anim,phase,dur,layers,usePrefix,onlyLayer,prefixMap=null){
 const out=clone(anim||{});
 Object.entries(out.slots||{}).forEach(([sn,slotAnim])=>{
-const l=phaseLayerForTargetName(sn,layers,usePrefix,onlyLayer);
+const l=phaseLayerForTargetName(sn,layers,usePrefix,onlyLayer,prefixMap);
 if(slotAnim.rgba)slotAnim.rgba.forEach(k=>{k.color=scaleRgbaAlpha(k.color,phaseAlphaFactor(phase,l,k.time??0,dur))})
 });
 Object.entries(out.bones||{}).forEach(([bn,boneAnim])=>{
-const l=phaseLayerForTargetName(bn,layers,usePrefix,onlyLayer);
+const l=phaseLayerForTargetName(bn,layers,usePrefix,onlyLayer,prefixMap);
 if(boneAnim.scale)boneAnim.scale.forEach(k=>{const f=phaseScaleFactor(phase,l,k.time??0,dur);k.x=r4((k.x??1)*f);k.y=r4((k.y??1)*f)})
 });
 return out
 }
-function buildPhaseTransitionAnimation(loopAnim,phase,dur,layers,usePrefix,onlyLayer){
+function buildPhaseTransitionAnimation(loopAnim,phase,dur,layers,usePrefix,onlyLayer,prefixMap=null){
 const loopDur=phaseDuration('loop'),start=phase==='intro'?Math.max(0,loopDur-dur):0,end=phase==='intro'?loopDur:Math.min(loopDur,dur),localDur=dur,out={slots:{},bones:{}};
 Object.entries(loopAnim.bones||{}).forEach(([bn,boneAnim])=>{
-const l=phaseLayerForTargetName(bn,layers,usePrefix,onlyLayer),boneOut={};
+const l=phaseLayerForTargetName(bn,layers,usePrefix,onlyLayer,prefixMap),boneOut={};
 if(l)syncLayerExportNames(l);
 const root=l?exportParentBoneName(l):'root',rootOff=l?rootOffsetForLayer(l,root):{x:0,y:0},originX=l?r2(emitterValue(l,'emitterX',0)-rootOff.x):0,originY=l?r2(-(emitterValue(l,'emitterY',0)-rootOff.y)):0;
 if(boneAnim.translatex){const off=phase==='outro'?trackEndpoint(boneAnim.translatex,'value','end',0)-trackEndpoint(boneAnim.translatex,'value','start',0):0;boneOut.translatex=segmentValueTrack(boneAnim.translatex,'value',start,end,localDur,off,phase==='intro'?originX:null)}
@@ -4776,7 +4884,7 @@ if(boneOut.scale)boneOut.scale=syncPhaseScaleSeam(boneOut.scale,boneAnim.scale,0
 out.bones[bn]=boneOut;
 });
 Object.entries(loopAnim.slots||{}).forEach(([sn,slotAnim])=>{
-const l=phaseLayerForTargetName(sn,layers,usePrefix,onlyLayer),slotOut={};
+const l=phaseLayerForTargetName(sn,layers,usePrefix,onlyLayer,prefixMap),slotOut={};
 if(slotAnim.rgba)slotOut.rgba=segmentRgbaTrack(slotAnim.rgba,start,end,localDur,phase,l);
 if(phase==='intro'&&slotOut.rgba)slotOut.rgba=syncPhaseRgbaSeam(slotOut.rgba,slotAnim.rgba,localDur,1);
 if(phase==='outro'&&slotOut.rgba)slotOut.rgba=syncPhaseRgbaSeam(slotOut.rgba,slotAnim.rgba,0,1);
@@ -4787,12 +4895,12 @@ return out
 }
 function buildPhaseJSON(onlyLayer=null,usePrefix=true){
 fitIntroDuration();
-const layers=exportLayerList(onlyLayer),loopDur=phaseDuration('loop'),introDur=phaseDuration('intro'),outroDur=phaseDuration('outro');
+const layers=exportLayerList(onlyLayer),loopDur=phaseDuration('loop'),introDur=phaseDuration('intro'),outroDur=phaseDuration('outro'),prefixMap=uniqueExportPrefixMap(layers,usePrefix);
 const loopDoc=buildJSONAtDuration(loopDur,onlyLayer,usePrefix),loopBase=Object.values(loopDoc.animations||{})[0]||{};
 loopDoc.animations={
-[cleanAnimationName(state.introAnimationName,'intro')]:buildPhaseTransitionAnimation(loopBase,'intro',introDur,layers,usePrefix,onlyLayer),
+[cleanAnimationName(state.introAnimationName,'intro')]:buildPhaseTransitionAnimation(loopBase,'intro',introDur,layers,usePrefix,onlyLayer,prefixMap),
 [cleanAnimationName(state.loopAnimationName,'loop')]:clone(loopBase),
-[cleanAnimationName(state.outroAnimationName,'outro')]:buildPhaseTransitionAnimation(loopBase,'outro',outroDur,layers,usePrefix,onlyLayer)
+[cleanAnimationName(state.outroAnimationName,'outro')]:buildPhaseTransitionAnimation(loopBase,'outro',outroDur,layers,usePrefix,onlyLayer,prefixMap)
 };
 return JSON.stringify(loopDoc,null,2)
 }
@@ -4824,6 +4932,7 @@ out.push(n)
 return out
 }
 function downloadJSON(json,name){if(downloadUrl)URL.revokeObjectURL(downloadUrl);const a=document.createElement('a');downloadUrl=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.href=downloadUrl;a.download=name||'particle_anim.json';a.click()}
+function downloadBlob(blob,name){if(downloadUrl)URL.revokeObjectURL(downloadUrl);const a=document.createElement('a');downloadUrl=URL.createObjectURL(blob);a.href=downloadUrl;a.download=name;a.click()}
 function safeFileName(name){return String(name||'particle').replace(/[\\/:*?"<>|]+/g,'_')}
 function shapeTextureDataUrl(l){
 const c=document.createElement('canvas'),s=TEX_SIZE,x=c.getContext('2d');c.width=c.height=s;x.clearRect(0,0,s,s);x.fillStyle='#fff';x.translate(s/2,s/2);
@@ -4866,6 +4975,150 @@ function downloadDataUrl(src,name){const a=document.createElement('a');a.href=sr
 function downloadTexturesForLayers(layers){
 const seen=new Set();
 layers.filter(l=>l.enabled).forEach(l=>textureFilesForLayer(l).forEach(tex=>{if(seen.has(tex.name))return;seen.add(tex.name);downloadDataUrl(tex.src,tex.name)}));
+}
+function utf8Bytes(str){
+const s=String(str),out=[];
+for(let i=0;i<s.length;i++){
+let c=s.charCodeAt(i);
+if(c<0x80)out.push(c);
+else if(c<0x800)out.push(0xc0|(c>>6),0x80|(c&0x3f));
+else if(c>=0xd800&&c<=0xdbff&&i+1<s.length){
+const d=s.charCodeAt(++i);c=0x10000+((c&0x3ff)<<10)+(d&0x3ff);
+out.push(0xf0|(c>>18),0x80|((c>>12)&0x3f),0x80|((c>>6)&0x3f),0x80|(c&0x3f))
+}else out.push(0xe0|(c>>12),0x80|((c>>6)&0x3f),0x80|(c&0x3f))
+}
+return new Uint8Array(out)
+}
+let crc32Table=null;
+function crc32(bytes){
+if(!crc32Table){crc32Table=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1);crc32Table[n]=c>>>0}}
+let c=0xffffffff;for(let i=0;i<bytes.length;i++)c=crc32Table[(c^bytes[i])&255]^(c>>>8);
+return(c^0xffffffff)>>>0
+}
+function dosDateTime(date=new Date()){
+const y=Math.max(1980,date.getFullYear());
+return{time:((date.getHours()&31)<<11)|((date.getMinutes()&63)<<5)|(Math.floor(date.getSeconds()/2)&31),date:((y-1980)<<9)|((date.getMonth()+1)<<5)|date.getDate()}
+}
+function u16(arr,v){arr.push(v&255,(v>>>8)&255)}
+function u32(arr,v){arr.push(v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255)}
+function concatBytes(parts){
+const total=parts.reduce((n,p)=>n+p.length,0),out=new Uint8Array(total);let off=0;
+parts.forEach(p=>{out.set(p,off);off+=p.length});
+return out
+}
+function dataUrlBytes(src){
+const s=String(src||''),b64=s.includes(',')?s.split(',').pop():s,bin=atob(b64),out=new Uint8Array(bin.length);
+for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+return out
+}
+function buildZip(files){
+const localParts=[],centralParts=[],dt=dosDateTime(),records=[];let offset=0;
+files.forEach(file=>{
+const nameBytes=utf8Bytes(file.name),data=file.data,crc=crc32(data),local=[];
+u32(local,0x04034b50);u16(local,20);u16(local,0x0800);u16(local,0);u16(local,dt.time);u16(local,dt.date);u32(local,crc);u32(local,data.length);u32(local,data.length);u16(local,nameBytes.length);u16(local,0);
+const localBytes=concatBytes([new Uint8Array(local),nameBytes,data]);
+localParts.push(localBytes);records.push({nameBytes,data,crc,offset});offset+=localBytes.length
+});
+let centralSize=0;
+records.forEach(r=>{
+const c=[];u32(c,0x02014b50);u16(c,20);u16(c,20);u16(c,0x0800);u16(c,0);u16(c,dt.time);u16(c,dt.date);u32(c,r.crc);u32(c,r.data.length);u32(c,r.data.length);u16(c,r.nameBytes.length);u16(c,0);u16(c,0);u16(c,0);u16(c,0);u32(c,0);u32(c,r.offset);
+const part=concatBytes([new Uint8Array(c),r.nameBytes]);centralParts.push(part);centralSize+=part.length
+});
+const end=[];u32(end,0x06054b50);u16(end,0);u16(end,0);u16(end,records.length);u16(end,records.length);u32(end,centralSize);u32(end,offset);u16(end,0);
+return new Blob([...localParts,...centralParts,new Uint8Array(end)],{type:'application/zip'})
+}
+function pngSequenceBaseName(){
+return safeFileName(String(state.fileName||'particle_anim').replace(/\.(json|fizz)$/i,''))||'particle_anim'
+}
+function pngSequenceFrameTime(i,fps,dur){return Math.min(i/fps,dur-ONE_FRAME*.001)}
+function expandParticleExportBounds(bounds,l,st,variant,textureName){
+const sc=Math.max(.0001,Number(st.sc||1)||1),sx=(st.sx??sc)/sc,sy=(st.sy??sc)/sc,r=sc*(l.spriteSize||34)*.5*(variant?textureVariantScale(variant):1);
+let x1,y1,x2,y2;
+const requestedTexture=textureName||l.shape,att=findAttachment(requestedTexture);
+if(att){const box=getWorldTextureSize(l,variant,null,requestedTexture,r*2);x1=box.drawX;y1=box.drawY;x2=box.drawX+box.drawW;y2=box.drawY+box.drawH}
+else{const px=textureName&&variant?textureVariantPivotX(variant):(l.pivotX??.5),py=textureName&&variant?textureVariantPivotY(variant):(l.pivotY??.5),ox=(px-.5)*r*2,oy=(py-.5)*r*2,cx=-ox,cy=-oy;x1=cx-r;y1=cy-r;x2=cx+r;y2=cy+r}
+const a=(st.rot||0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a),pts=[[x1,y1],[x2,y1],[x2,y2],[x1,y2]];
+pts.forEach(p=>{const lx=p[0]*sx,ly=p[1]*sy,x=st.x+lx*c-ly*s,y=st.y+lx*s+ly*c;bounds.minX=Math.min(bounds.minX,x);bounds.minY=Math.min(bounds.minY,y);bounds.maxX=Math.max(bounds.maxX,x);bounds.maxY=Math.max(bounds.maxY,y)})
+}
+function pngSequenceWorldBounds(dur,fps,frames){
+const bounds={minX:Infinity,minY:Infinity,maxX:-Infinity,maxY:-Infinity};
+for(let f=0;f<frames;f++){
+const time=pngSequenceFrameTime(f,fps,dur),layers=orderedLayers();
+layers.forEach(l=>{
+if(!layerWorkflowVisible(l,{time,duration:state.duration}))return;
+const pCount=Math.round(l.count);ensureSeeds(l,pCount);
+for(const i of particleOrderIndices(l,pCount)){
+const st=phaseStateAt(l,i,time);if(st.alpha<.004)continue;
+const variant=getParticleTextureVariant(l,i),textureName=variant?resolveTextureName(l,variant.texture):null;
+expandParticleExportBounds(bounds,l,st,variant,textureName)
+}
+})
+}
+if(!Number.isFinite(bounds.minX))return null;
+const pad=3,minX=Math.floor(bounds.minX-pad),minY=Math.floor(bounds.minY-pad),maxX=Math.ceil(bounds.maxX+pad),maxY=Math.ceil(bounds.maxY+pad);
+return{minX,minY,width:Math.max(1,maxX-minX),height:Math.max(1,maxY-minY)}
+}
+function renderPngSequenceFrameToCanvas(canvas,time,bounds){
+const x=canvas.getContext('2d'),layers=orderedLayers();
+x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,canvas.width,canvas.height);x.save();x.translate(-bounds.minX,-bounds.minY);
+layers.forEach(l=>{
+if(!layerWorkflowVisible(l,{time,duration:state.duration}))return;
+x.globalCompositeOperation=blend(l.blend);
+const pCount=Math.round(l.count);ensureSeeds(l,pCount);
+for(const i of particleOrderIndices(l,pCount)){
+const st=phaseStateAt(l,i,time);if(st.alpha<.004)continue;
+const slotColor=previewSlotColor(l,st.nt,st.alpha,l.seeds[i]),rgb=slotColor.rgb,variant=getParticleTextureVariant(l,i),variantScale=variant?textureVariantScale(variant):1;
+x.save();x.translate(st.x,st.y);x.rotate((st.rot||0)*Math.PI/180);x.scale((st.sx||st.sc)/st.sc,(st.sy||st.sc)/st.sc);x.globalAlpha=slotColor.alpha;x.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+drawShape(l,0,0,st.sc*l.spriteSize*.5*variantScale,variant?resolveTextureName(l,variant.texture):null,variant,x);
+x.restore()
+}
+x.globalCompositeOperation='source-over'
+});
+x.restore();x.globalCompositeOperation='source-over';x.globalAlpha=1
+}
+function canvasAlphaBounds(canvas,threshold=1){
+const x=canvas.getContext('2d'),w=canvas.width,h=canvas.height,d=x.getImageData(0,0,w,h).data,b={minX:w,minY:h,maxX:-1,maxY:-1};
+for(let y=0;y<h;y++)for(let x0=0;x0<w;x0++){if(d[(y*w+x0)*4+3]>=threshold){if(x0<b.minX)b.minX=x0;if(y<b.minY)b.minY=y;if(x0>b.maxX)b.maxX=x0;if(y>b.maxY)b.maxY=y}}
+return b.maxX<0?null:{x:b.minX,y:b.minY,width:b.maxX-b.minX+1,height:b.maxY-b.minY+1}
+}
+async function measurePngSequenceTrim(canvas,bounds,dur,fps,frames,statusEl){
+let trim=null;
+for(let i=0;i<frames;i++){
+renderPngSequenceFrameToCanvas(canvas,pngSequenceFrameTime(i,fps,dur),bounds);
+const b=canvasAlphaBounds(canvas);
+if(b)trim=trim?{x:Math.min(trim.x,b.x),y:Math.min(trim.y,b.y),width:Math.max(trim.x+trim.width,b.x+b.width)-Math.min(trim.x,b.x),height:Math.max(trim.y+trim.height,b.y+b.height)-Math.min(trim.y,b.y)}:b;
+if(statusEl)statusEl.textContent=`measure png ${i+1}/${frames}`;
+if(i%12===11)await new Promise(resolve=>setTimeout(resolve,0))
+}
+return trim||{x:0,y:0,width:1,height:1}
+}
+async function exportPngSequence(){
+const m=q('sMode'),base=pngSequenceBaseName(),dur=Math.max(ONE_FRAME,previewDuration()),fps=PNG_SEQUENCE_FPS,frames=Math.max(1,Math.ceil(dur*fps)),files=[];
+const saved={gT,playing,forceRedraw,showGrid,gizmoVisible,pivotVisible,showMotionPaths,pathEdit,attractorEdit,vortexEdit,colliderEdit};
+try{
+if(m)m.textContent='png sequence...';
+playing=false;pngSequenceExporting=true;showGrid=false;gizmoVisible=false;pivotVisible=false;showMotionPaths=false;pathEdit=false;attractorEdit=false;vortexEdit=false;colliderEdit=false;
+const bounds=pngSequenceWorldBounds(dur,fps,frames)||{minX:0,minY:0,width:1,height:1},renderCanvas=document.createElement('canvas'),outCanvas=document.createElement('canvas'),outCtx=outCanvas.getContext('2d');
+renderCanvas.width=bounds.width;renderCanvas.height=bounds.height;
+const trim=await measurePngSequenceTrim(renderCanvas,bounds,dur,fps,frames,m);
+outCanvas.width=Math.max(1,trim.width);outCanvas.height=Math.max(1,trim.height);
+for(let i=0;i<frames;i++){
+const t=pngSequenceFrameTime(i,fps,dur);
+gT=t;renderPngSequenceFrameToCanvas(renderCanvas,t,bounds);
+outCtx.setTransform(1,0,0,1,0,0);outCtx.clearRect(0,0,outCanvas.width,outCanvas.height);outCtx.drawImage(renderCanvas,trim.x,trim.y,trim.width,trim.height,0,0,trim.width,trim.height);
+files.push({name:`${base}_${String(i).padStart(4,'0')}.png`,data:dataUrlBytes(outCanvas.toDataURL('image/png'))});
+if(m)m.textContent=`png ${i+1}/${frames} ${outCanvas.width}x${outCanvas.height}`;
+if(i%12===11)await new Promise(resolve=>setTimeout(resolve,0))
+}
+downloadBlob(buildZip(files),`${base}_png_sequence_${fps}fps.zip`);
+if(m)m.textContent='png exported'
+}catch(err){
+if(m)m.textContent='png export error';
+throw err
+}finally{
+gT=saved.gT;playing=saved.playing;forceRedraw=saved.forceRedraw;showGrid=saved.showGrid;gizmoVisible=saved.gizmoVisible;pivotVisible=saved.pivotVisible;showMotionPaths=saved.showMotionPaths;pathEdit=saved.pathEdit;attractorEdit=saved.attractorEdit;vortexEdit=saved.vortexEdit;colliderEdit=saved.colliderEdit;pngSequenceExporting=false;
+particlesDirty=true;overlayDirty=true;forceRedraw=true
+}
 }
 function exportWithOptionalTextures(layer=null,name='particle_anim.json',usePrefix=true){try{downloadJSON(isPhaseMode()?buildPhaseJSON(layer,usePrefix):buildJSON(layer,usePrefix),name);if(state.includeTextures)downloadTexturesForLayers(layer?[layer]:exportLayerList());const m=q('sMode');if(m)m.textContent='exported'}catch(err){const m=q('sMode');if(m)m.textContent='export error';throw err}}
 function beginGizmoDrag(e,hit){beginHistory();const l=state.layers[active],c=gizmoCenter(l),p=screenToWorld(e);gizmoDrag={hit,startX:e.clientX,startY:e.clientY,startWorld:p,center:c,start:{emitterX:l.emitterX||0,emitterY:l.emitterY||0,emitRotX:l.emitRotX||0,emitRotY:l.emitRotY||0,emitRotZ:l.emitRotZ||0,emitRadius:l.emitRadius||0,emitW:l.emitW||0,emitH:l.emitH||0,emitLine:l.emitLine||0},startAngle:Math.atan2(p.sy-worldToScreen(c).y,p.sx-worldToScreen(c).x)};gizmoTip='';cv.setPointerCapture?.(e.pointerId)}
