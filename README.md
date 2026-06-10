@@ -13,3 +13,10 @@ Access control:
 - Configure these Cloudflare environment variables before deployment:
   - `SUPABASE_URL`
   - `SUPABASE_ANON_KEY`
+
+License API:
+- /api/license verifies a Supabase bearer token for desktop access.
+- Without SUPABASE_LICENSE_TABLE, the API runs in auth-only mode.
+- With SUPABASE_LICENSE_TABLE, create rows with user_id or email, status, and optional expires_at.
+- Active statuses: active, trial, beta.
+- Optional Cloudflare variable: SUPABASE_SERVICE_ROLE_KEY for server-side license table reads.

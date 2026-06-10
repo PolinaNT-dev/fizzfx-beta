@@ -3947,6 +3947,16 @@ return{x:r4((st.sx??st.sc??1)*s),y:r4((st.sy??st.sc??1)*s)}
 }
 function ensureZeroScaleKey(track,l,i){ensureZeroKey(track,exportScaleKey(l,i??0,{sc:1,sx:1,sy:1}))}
 function rootOffsetForLayer(l,root){return root&&root!=='root'?{x:r2(emitterValue(l,'emitterX',0)),y:r2(emitterValue(l,'emitterY',0))}:{x:0,y:0}}
+function exportRootOffsetMap(layers){
+const map=new Map();
+layers.forEach(l=>{
+syncLayerExportNames(l);
+const root=exportParentBoneName(l);
+if(root&&root!=='root'&&!map.has(root))map.set(root,rootOffsetForLayer(l,root))
+});
+return map
+}
+function rootOffsetForExport(l,root,map=null){return root&&root!=='root'&&map?.has(root)?map.get(root):rootOffsetForLayer(l,root)}
 function relativeTrack(track,offset){return offset?offsetValueTrack(track,offset):track}
 function makeAttachmentKey(time,name){const k={};k.name=name;return k}
 function easeCurveMode(l){return l.ease==='easein'?'easein':l.ease==='easeinout'?'easeinout':l.ease==='linear'?'linear':'easeout'}
@@ -4598,11 +4608,11 @@ return orderedLayers().filter(l=>state.exportVisibleOnly?exportLayerVisible(l):l
 }
 function buildJSON(onlyLayer=null,usePrefix=true){
 state.layers.forEach(clampLayerLife);
-const layers=exportLayerList(onlyLayer),bones=[{name:'root'}],slots=[],skinA={},animBones={},animSlots={},dur=state.duration,spine=state.spineVersion||'4.2',reuse=state.reuseBones,prefixMap=uniqueExportPrefixMap(layers,usePrefix);
+const layers=exportLayerList(onlyLayer),bones=[{name:'root'}],slots=[],skinA={},animBones={},animSlots={},dur=state.duration,spine=state.spineVersion||'4.2',reuse=state.reuseBones,prefixMap=uniqueExportPrefixMap(layers,usePrefix),rootOffsetMap=exportRootOffsetMap(layers);
 layers.forEach(l=>{
 syncLayerExportNames(l);
 const root=exportParentBoneName(l);
-const rootOff=rootOffsetForLayer(l,root);
+const rootOff=rootOffsetForExport(l,root,rootOffsetMap);
 if(root!=='root'&&!bones.some(b=>b.name===root))bones.push({name:root,parent:'root',x:rootOff.x,y:r2(-rootOff.y)});
 const n=Math.round(l.count),cycle=layerCycleLength(l,dur);
 ensureSeeds(l,n);
@@ -4794,11 +4804,11 @@ function phaseExportGroups(l,dur,usePrefix=true,prefixOverride=null){
 const n=Math.round(l.count),cycle=layerCycleLength(l,dur),sampled=layerHasTiming(l,dur)||!!state.collider?.enabled,packedGroups=sampled?Array.from({length:n},(_,i)=>[i]):(state.reuseBones?packParticleIndices(l,n,cycle):Array.from({length:n},(_,i)=>[i]));
 return particleOrderGroups(l,packedGroups).map((group,gi)=>{const name=particleExportName(l,gi,usePrefix,prefixOverride);return{group,gi,i:group[0],bn:name,sn:name}})
 }
-function buildIntroBirthAnimation(loopAnim,dur,layers,usePrefix,onlyLayer,prefixMap=null){
+function buildIntroBirthAnimation(loopAnim,dur,layers,usePrefix,onlyLayer,prefixMap=null,rootOffsetMap=null){
 const out={slots:{},bones:{}},loopDur=phaseDuration('loop'),baseSamples=[0,.12,.25,.5,.75,1];
 layers.forEach(l=>{
 syncLayerExportNames(l);
-const root=exportParentBoneName(l),rootOff=rootOffsetForLayer(l,root),n=Math.round(l.count);ensureSeeds(l,n);
+const root=exportParentBoneName(l),rootOff=rootOffsetForExport(l,root,rootOffsetMap),n=Math.round(l.count);ensureSeeds(l,n);
 phaseExportGroups(l,loopDur,usePrefix,prefixMap?.get(l)).forEach(({i,bn,sn})=>{
 const boneOut={translatex:[],translatey:[],scale:[]},slotOut={rgba:[]},hasRot=!!loopAnim.bones?.[bn]?.rotate;
 if(hasRot)boneOut.rotate=[];
@@ -4819,11 +4829,11 @@ if(loopAnim.slots?.[sn]?.attachment)out.slots[sn].attachment=[clone(loopAnim.slo
 });
 return out
 }
-function buildOutroDrainAnimation(loopAnim,dur,layers,usePrefix,onlyLayer,prefixMap=null){
+function buildOutroDrainAnimation(loopAnim,dur,layers,usePrefix,onlyLayer,prefixMap=null,rootOffsetMap=null){
 const out={slots:{},bones:{}},loopDur=phaseDuration('loop'),baseSamples=[0,.12,.25,.5,.75,1];
 layers.forEach(l=>{
 syncLayerExportNames(l);
-const root=exportParentBoneName(l),rootOff=rootOffsetForLayer(l,root),n=Math.round(l.count);ensureSeeds(l,n);
+const root=exportParentBoneName(l),rootOff=rootOffsetForExport(l,root,rootOffsetMap),n=Math.round(l.count);ensureSeeds(l,n);
 phaseExportGroups(l,loopDur,usePrefix,prefixMap?.get(l)).forEach(({i,bn,sn})=>{
 const boneOut={translatex:[],translatey:[],scale:[]},slotOut={rgba:[]},hasRot=!!loopAnim.bones?.[bn]?.rotate,cycle=layerCycleLength(l,loopDur),life=particleLife(l,i,cycle),seamAge=loopSeamAge(l,i,cycle),deathT=life-seamAge;
 if(hasRot)boneOut.rotate=[];
@@ -4859,12 +4869,12 @@ if(boneAnim.scale)boneAnim.scale.forEach(k=>{const f=phaseScaleFactor(phase,l,k.
 });
 return out
 }
-function buildPhaseTransitionAnimation(loopAnim,phase,dur,layers,usePrefix,onlyLayer,prefixMap=null){
+function buildPhaseTransitionAnimation(loopAnim,phase,dur,layers,usePrefix,onlyLayer,prefixMap=null,rootOffsetMap=null){
 const loopDur=phaseDuration('loop'),start=phase==='intro'?Math.max(0,loopDur-dur):0,end=phase==='intro'?loopDur:Math.min(loopDur,dur),localDur=dur,out={slots:{},bones:{}};
 Object.entries(loopAnim.bones||{}).forEach(([bn,boneAnim])=>{
 const l=phaseLayerForTargetName(bn,layers,usePrefix,onlyLayer,prefixMap),boneOut={};
 if(l)syncLayerExportNames(l);
-const root=l?exportParentBoneName(l):'root',rootOff=l?rootOffsetForLayer(l,root):{x:0,y:0},originX=l?r2(emitterValue(l,'emitterX',0)-rootOff.x):0,originY=l?r2(-(emitterValue(l,'emitterY',0)-rootOff.y)):0;
+const root=l?exportParentBoneName(l):'root',rootOff=l?rootOffsetForExport(l,root,rootOffsetMap):{x:0,y:0},originX=l?r2(emitterValue(l,'emitterX',0)-rootOff.x):0,originY=l?r2(-(emitterValue(l,'emitterY',0)-rootOff.y)):0;
 if(boneAnim.translatex){const off=phase==='outro'?trackEndpoint(boneAnim.translatex,'value','end',0)-trackEndpoint(boneAnim.translatex,'value','start',0):0;boneOut.translatex=segmentValueTrack(boneAnim.translatex,'value',start,end,localDur,off,phase==='intro'?originX:null)}
 if(boneAnim.translatey){const off=phase==='outro'?trackEndpoint(boneAnim.translatey,'value','end',0)-trackEndpoint(boneAnim.translatey,'value','start',0):0;boneOut.translatey=segmentValueTrack(boneAnim.translatey,'value',start,end,localDur,off,phase==='intro'?originY:null)}
 if(boneAnim.rotate){const field=boneAnim.rotate.some(k=>k.angle!==undefined)?'angle':'value',off=phase==='outro'?trackEndpoint(boneAnim.rotate,field,'end',0)-trackEndpoint(boneAnim.rotate,field,'start',0):0;boneOut.rotate=segmentValueTrack(boneAnim.rotate,field,start,end,localDur,off)}
@@ -4895,12 +4905,12 @@ return out
 }
 function buildPhaseJSON(onlyLayer=null,usePrefix=true){
 fitIntroDuration();
-const layers=exportLayerList(onlyLayer),loopDur=phaseDuration('loop'),introDur=phaseDuration('intro'),outroDur=phaseDuration('outro'),prefixMap=uniqueExportPrefixMap(layers,usePrefix);
+const layers=exportLayerList(onlyLayer),loopDur=phaseDuration('loop'),introDur=phaseDuration('intro'),outroDur=phaseDuration('outro'),prefixMap=uniqueExportPrefixMap(layers,usePrefix),rootOffsetMap=exportRootOffsetMap(layers);
 const loopDoc=buildJSONAtDuration(loopDur,onlyLayer,usePrefix),loopBase=Object.values(loopDoc.animations||{})[0]||{};
 loopDoc.animations={
-[cleanAnimationName(state.introAnimationName,'intro')]:buildPhaseTransitionAnimation(loopBase,'intro',introDur,layers,usePrefix,onlyLayer,prefixMap),
+[cleanAnimationName(state.introAnimationName,'intro')]:buildPhaseTransitionAnimation(loopBase,'intro',introDur,layers,usePrefix,onlyLayer,prefixMap,rootOffsetMap),
 [cleanAnimationName(state.loopAnimationName,'loop')]:clone(loopBase),
-[cleanAnimationName(state.outroAnimationName,'outro')]:buildPhaseTransitionAnimation(loopBase,'outro',outroDur,layers,usePrefix,onlyLayer,prefixMap)
+[cleanAnimationName(state.outroAnimationName,'outro')]:buildPhaseTransitionAnimation(loopBase,'outro',outroDur,layers,usePrefix,onlyLayer,prefixMap,rootOffsetMap)
 };
 return JSON.stringify(loopDoc,null,2)
 }

@@ -59,7 +59,8 @@
     let mode = 'signin';
     let config = null;
 
-    const next = new URLSearchParams(location.search).get('next') || '/';
+    const rawNext = new URLSearchParams(location.search).get('next') || '/';
+    const next = rawNext.startsWith('/login') ? '/' : rawNext;
 
     function setStatus(message, bad = false) {
       statusEl.textContent = message || '';

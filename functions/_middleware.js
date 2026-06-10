@@ -43,10 +43,12 @@ export async function onRequest(context) {
 }
 
 function isPublicPath(pathname) {
-  return pathname === "/login.html" ||
+  return pathname === "/login" ||
+    pathname === "/login.html" ||
     pathname === "/favicon.ico" ||
     pathname === "/robots.txt" ||
-    pathname.startsWith("/auth/");
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/api/");
 }
 
 function getCookie(request, name) {
