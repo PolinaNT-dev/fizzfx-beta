@@ -20,3 +20,9 @@ License API:
 - With SUPABASE_LICENSE_TABLE, create rows with user_id or email, status, and optional expires_at.
 - Active statuses: active, trial, beta.
 - Optional Cloudflare variable: SUPABASE_SERVICE_ROLE_KEY for server-side license table reads.
+
+Desktop download page:
+- Public page: /download.html
+- Download endpoint: /download/windows
+- Configure Cloudflare variable FIZZFX_WINDOWS_INSTALLER_URL with the hosted Windows installer URL.
+- Do not commit installer .exe files to this repository; Cloudflare Pages static assets are limited to 25 MiB per file.

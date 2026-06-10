@@ -45,6 +45,10 @@ export async function onRequest(context) {
 function isPublicPath(pathname) {
   return pathname === "/login" ||
     pathname === "/login.html" ||
+    pathname === "/download" ||
+    pathname === "/download.html" ||
+    pathname.startsWith("/download/") ||
+    pathname.startsWith("/assets/") ||
     pathname === "/favicon.ico" ||
     pathname === "/robots.txt" ||
     pathname.startsWith("/auth/") ||
