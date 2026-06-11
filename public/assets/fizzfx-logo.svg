@@ -1,4 +1,5 @@
 <svg width="332" height="332" viewBox="0 0 332 332" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#fizzfxIconClip)">
 <rect width="332" height="332" fill="#030A14"/>
 <g filter="url(#filter0_f_234_5)">
 <circle cx="166.5" cy="166.5" r="38.5" fill="#06B4FB"/>
@@ -11,7 +12,9 @@
 </g>
 <path d="M261 166C175.971 171.506 171.51 175.971 166 261C160.49 175.971 156.029 171.506 71 166C156.029 160.49 160.49 156.029 166 71C171.506 156.029 175.971 160.49 261 166Z" fill="#A9EBFD"/>
 <path d="M261 166C175.971 171.506 171.51 175.971 166 261C160.49 175.971 156.029 171.506 71 166C156.029 160.49 160.49 156.029 166 71C171.506 156.029 175.971 160.49 261 166Z" fill="url(#paint0_radial_234_5)"/>
+</g>
 <defs>
+<clipPath id="fizzfxIconClip"><rect width="332" height="332" rx="74" ry="74"/></clipPath>
 <filter id="filter0_f_234_5" x="37.2" y="37.2" width="258.6" height="258.6" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
 <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
