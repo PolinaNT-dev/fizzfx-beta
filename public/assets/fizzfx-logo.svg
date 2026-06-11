@@ -1,17 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <defs>
-    <radialGradient id="bg" cx="50%" cy="46%" r="72%">
-      <stop offset="0" stop-color="#071827"/>
-      <stop offset="1" stop-color="#03070d"/>
-    </radialGradient>
-    <filter id="glow" x="-70%" y="-70%" width="240%" height="240%">
-      <feGaussianBlur stdDeviation="5" result="b"/>
-      <feColorMatrix in="b" type="matrix" values="0 0 0 0 0.05 0 0 0 0 0.72 0 0 0 0 1 0 0 0 .9 0"/>
-      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-  </defs>
-  <rect x="8" y="8" width="112" height="112" rx="24" fill="url(#bg)" stroke="#2b3340" stroke-width="2"/>
-  <path d="M64 14 C68 48 80 60 114 64 C80 68 68 80 64 114 C60 80 48 68 14 64 C48 60 60 48 64 14Z" fill="#e8fbff" filter="url(#glow)"/>
-  <path d="M64 22 C67 51 77 61 106 64 C77 67 67 77 64 106 C61 77 51 67 22 64 C51 61 61 51 64 22Z" fill="#d8f8ff"/>
-  <path d="M64 18 L67 61 L110 64 L67 67 L64 110 L61 67 L18 64 L61 61Z" fill="#ffffff" opacity=".82"/>
+<svg width="332" height="332" viewBox="0 0 332 332" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="332" height="332" fill="#030A14"/>
+<g filter="url(#filter0_f_234_5)">
+<circle cx="166.5" cy="166.5" r="38.5" fill="#06B4FB"/>
+</g>
+<g filter="url(#filter1_f_234_5)">
+<path d="M261 166C175.971 171.506 171.51 175.971 166 261C160.49 175.971 156.029 171.506 71 166C156.029 160.49 160.49 156.029 166 71C171.506 156.029 175.971 160.49 261 166Z" fill="#00BEFF"/>
+</g>
+<g filter="url(#filter2_f_234_5)">
+<path d="M261 166C175.971 171.506 171.51 175.971 166 261C160.49 175.971 156.029 171.506 71 166C156.029 160.49 160.49 156.029 166 71C171.506 156.029 175.971 160.49 261 166Z" fill="#0055FF"/>
+</g>
+<path d="M261 166C175.971 171.506 171.51 175.971 166 261C160.49 175.971 156.029 171.506 71 166C156.029 160.49 160.49 156.029 166 71C171.506 156.029 175.971 160.49 261 166Z" fill="#A9EBFD"/>
+<path d="M261 166C175.971 171.506 171.51 175.971 166 261C160.49 175.971 156.029 171.506 71 166C156.029 160.49 160.49 156.029 166 71C171.506 156.029 175.971 160.49 261 166Z" fill="url(#paint0_radial_234_5)"/>
+<defs>
+<filter id="filter0_f_234_5" x="37.2" y="37.2" width="258.6" height="258.6" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="45.4" result="effect1_foregroundBlur_234_5"/>
+</filter>
+<filter id="filter1_f_234_5" x="45.6" y="45.6" width="240.8" height="240.8" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="12.7" result="effect1_foregroundBlur_234_5"/>
+</filter>
+<filter id="filter2_f_234_5" x="59.9" y="59.9" width="212.2" height="212.2" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="5.55" result="effect1_foregroundBlur_234_5"/>
+</filter>
+<radialGradient id="paint0_radial_234_5" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(166 166) rotate(90) scale(126.5)">
+<stop stop-color="white" stop-opacity="0"/>
+<stop offset="1" stop-color="white"/>
+</radialGradient>
+</defs>
 </svg>
